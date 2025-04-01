@@ -268,6 +268,71 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                 ),
                 'description'     => esc_html__('Limit the number of posts displayed in the feed.', 'aqm-blog-post-feed'),
             ),
+            'enable_load_more' => array(
+                'label'           => esc_html__('Enable Load More Button', 'aqm-blog-post-feed'),
+                'type'            => 'yes_no_button',
+                'options'         => array(
+                    'on'  => esc_html__('Yes', 'aqm-blog-post-feed'),
+                    'off' => esc_html__('No', 'aqm-blog-post-feed'),
+                ),
+                'default'         => 'off',
+                'description'     => esc_html__('Enable a button to load more posts.', 'aqm-blog-post-feed'),
+            ),
+            'initial_posts' => array(
+                'label'           => esc_html__('Initial Posts to Load', 'aqm-blog-post-feed'),
+                'type'            => 'range',
+                'default'         => 6,
+                'options'         => array(
+                    'min'  => 1,
+                    'max'  => 20,
+                    'step' => 1,
+                ),
+                'description'     => esc_html__('Number of posts to display initially when Load More is enabled.', 'aqm-blog-post-feed'),
+                'show_if'         => array('enable_load_more' => 'on'),
+            ),
+            'additional_posts' => array(
+                'label'           => esc_html__('Additional Posts Per Load', 'aqm-blog-post-feed'),
+                'type'            => 'range',
+                'default'         => 3,
+                'options'         => array(
+                    'min'  => 1,
+                    'max'  => 10,
+                    'step' => 1,
+                ),
+                'description'     => esc_html__('Number of additional posts to load when clicking the Load More button.', 'aqm-blog-post-feed'),
+                'show_if'         => array('enable_load_more' => 'on'),
+            ),
+            'load_more_text' => array(
+                'label'           => esc_html__('Load More Button Text', 'aqm-blog-post-feed'),
+                'type'            => 'text',
+                'default'         => 'Load More',
+                'description'     => esc_html__('Text to display on the Load More button.', 'aqm-blog-post-feed'),
+                'show_if'         => array('enable_load_more' => 'on'),
+            ),
+            'load_more_bg_color' => array(
+                'label'           => esc_html__('Load More Button Background Color', 'aqm-blog-post-feed'),
+                'type'            => 'color',
+                'default'         => '#0073e6',
+                'show_if'         => array('enable_load_more' => 'on'),
+            ),
+            'load_more_text_color' => array(
+                'label'           => esc_html__('Load More Button Text Color', 'aqm-blog-post-feed'),
+                'type'            => 'color',
+                'default'         => '#ffffff',
+                'show_if'         => array('enable_load_more' => 'on'),
+            ),
+            'load_more_hover_bg_color' => array(
+                'label'           => esc_html__('Load More Button Hover Background Color', 'aqm-blog-post-feed'),
+                'type'            => 'color',
+                'default'         => '#005bb5',
+                'show_if'         => array('enable_load_more' => 'on'),
+            ),
+            'load_more_hover_text_color' => array(
+                'label'           => esc_html__('Load More Button Hover Text Color', 'aqm-blog-post-feed'),
+                'type'            => 'color',
+                'default'         => '#ffffff',
+                'show_if'         => array('enable_load_more' => 'on'),
+            ),
             'sort_order' => array(
                 'label'           => esc_html__('Sort Order', 'aqm-blog-post-feed'),
                 'type'            => 'select',
@@ -317,6 +382,16 @@ public function render($attrs, $render_slug, $content = null) {
         $read_more_text = $this->props['read_more_text'];
         $background_zoom = $this->props['background_zoom'];
         $post_limit = intval($this->props['post_limit']);
+        
+        // Load More settings
+        $enable_load_more = isset($this->props['enable_load_more']) ? $this->props['enable_load_more'] : 'off';
+        $initial_posts = isset($this->props['initial_posts']) ? intval($this->props['initial_posts']) : 6;
+        $additional_posts = isset($this->props['additional_posts']) ? intval($this->props['additional_posts']) : 3;
+        $load_more_text = isset($this->props['load_more_text']) ? $this->props['load_more_text'] : 'Load More';
+        $load_more_bg_color = isset($this->props['load_more_bg_color']) ? $this->props['load_more_bg_color'] : '#0073e6';
+        $load_more_text_color = isset($this->props['load_more_text_color']) ? $this->props['load_more_text_color'] : '#ffffff';
+        $load_more_hover_bg_color = isset($this->props['load_more_hover_bg_color']) ? $this->props['load_more_hover_bg_color'] : '#005bb5';
+        $load_more_hover_text_color = isset($this->props['load_more_hover_text_color']) ? $this->props['load_more_hover_text_color'] : '#ffffff';
 
         // Apply uppercase style based on the setting
         $uppercase_style = $read_more_uppercase === 'on' ? 'text-transform: uppercase;' : '';
@@ -350,7 +425,7 @@ public function render($attrs, $render_slug, $content = null) {
         // Fetch posts
         $args = array(
             'post_type' => 'post',
-            'posts_per_page' => $post_limit,
+            'posts_per_page' => ($enable_load_more === 'on') ? $initial_posts : $post_limit,
             'orderby' => $orderby,
             'order' => $order,
         );
@@ -398,6 +473,106 @@ $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="trans
         }
 
         $output .= '</div>'; // Close aqm-post-feed
+        
+        // Add Load More button if enabled
+        if ($enable_load_more === 'on') {
+            // Generate a unique ID for this instance
+            $module_id = 'aqm-blog-' . wp_rand(1000, 9999);
+            
+            $output .= '<div class="aqm-load-more-container" style="text-align: center; margin-top: 30px;">';
+            $output .= '<button id="' . $module_id . '-load-more" class="aqm-load-more-button" style="background-color: ' . esc_attr($load_more_bg_color) . '; color: ' . esc_attr($load_more_text_color) . '; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; transition: all 0.3s ease;">' . esc_html($load_more_text) . '</button>';
+            $output .= '</div>';
+            
+            // Add JavaScript to handle AJAX loading
+            $output .= '<script>
+            jQuery(document).ready(function($) {
+                var page = 1;
+                var loading = false;
+                var button = $("#' . $module_id . '-load-more");
+                
+                button.on("mouseover", function() {
+                    $(this).css({
+                        "background-color": "' . esc_attr($load_more_hover_bg_color) . '",
+                        "color": "' . esc_attr($load_more_hover_text_color) . '"
+                    });
+                }).on("mouseout", function() {
+                    $(this).css({
+                        "background-color": "' . esc_attr($load_more_bg_color) . '",
+                        "color": "' . esc_attr($load_more_text_color) . '"
+                    });
+                });
+                
+                button.on("click", function() {
+                    if (loading) return;
+                    loading = true;
+                    
+                    // Show loading state
+                    button.text("Loading...").prop("disabled", true);
+                    
+                    $.ajax({
+                        url: "' . admin_url('admin-ajax.php') . '",
+                        type: "POST",
+                        data: {
+                            action: "aqm_load_more_posts",
+                            page: ++page,
+                            posts_per_page: ' . $additional_posts . ',
+                            orderby: "' . $orderby . '",
+                            order: "' . $order . '",
+                            nonce: "' . wp_create_nonce('aqm_load_more_nonce') . '",
+                            columns: ' . $columns . ',
+                            columns_tablet: ' . $columns_tablet . ',
+                            columns_mobile: ' . $columns_mobile . ',
+                            spacing: ' . $spacing . ',
+                            item_border_radius: ' . $item_border_radius . ',
+                            title_color: "' . $title_color . '",
+                            title_font_size: ' . $title_font_size . ',
+                            title_font_size_mobile: ' . $title_font_size_mobile . ',
+                            title_line_height: ' . $title_line_height . ',
+                            content_font_size: ' . $content_font_size . ',
+                            content_color: "' . $content_color . '",
+                            content_line_height: ' . $content_line_height . ',
+                            content_padding: "' . $content_padding . '",
+                            meta_font_size: ' . $meta_font_size . ',
+                            meta_line_height: ' . $meta_line_height . ',
+                            meta_color: "' . $meta_color . '",
+                            read_more_padding: "' . $read_more_padding . '",
+                            read_more_border_radius: ' . $read_more_border_radius . ',
+                            read_more_color: "' . $read_more_color . '",
+                            read_more_bg_color: "' . $read_more_bg_color . '",
+                            read_more_font_size: ' . $read_more_font_size . ',
+                            read_more_hover_color: "' . $read_more_hover_color . '",
+                            read_more_hover_bg_color: "' . $read_more_hover_bg_color . '",
+                            excerpt_limit: ' . $excerpt_limit . ',
+                            read_more_text: "' . $read_more_text . '",
+                            read_more_uppercase: "' . $read_more_uppercase . '",
+                            background_zoom: ' . $background_zoom . '
+                        },
+                        success: function(response) {
+                            var data = JSON.parse(response);
+                            if (data.success) {
+                                $(".aqm-post-feed").append(data.html);
+                                
+                                // Re-enable button if there are more posts
+                                if (data.has_more) {
+                                    button.text("' . esc_html($load_more_text) . '").prop("disabled", false);
+                                } else {
+                                    button.text("No More Posts").prop("disabled", true);
+                                }
+                            } else {
+                                button.text("Error Loading Posts").prop("disabled", true);
+                            }
+                            loading = false;
+                        },
+                        error: function() {
+                            button.text("Error Loading Posts").prop("disabled", true);
+                            loading = false;
+                        }
+                    });
+                });
+            });
+            </script>';
+        }
+        
         wp_reset_postdata();
 
         // Inline styles for hover effects and responsive columns
