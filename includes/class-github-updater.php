@@ -8,7 +8,7 @@
 // Exit if accessed directly
 if (!defined('ABSPATH')) exit;
 
-class AQM_GitHub_Updater {
+class AQM_Blog_Post_Feed_GitHub_Updater {
     private $slug;
     private $plugin_data;
     private $username;
