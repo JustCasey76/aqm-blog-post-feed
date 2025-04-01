@@ -5,6 +5,14 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
 
     public function init() {
         $this->name = esc_html__('AQM Blog Post Feed', 'aqm-blog-post-feed');
+        
+        // Enqueue Font Awesome
+        add_action('wp_enqueue_scripts', array($this, 'enqueue_font_awesome'));
+    }
+    
+    // Function to load Font Awesome
+    public function enqueue_font_awesome() {
+        wp_enqueue_style('font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css', array(), '5.15.4');
     }
 
     public function get_fields() {
@@ -260,6 +268,17 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                 ),
                 'description'     => esc_html__('Limit the number of posts displayed in the feed.', 'aqm-blog-post-feed'),
             ),
+            'sort_order' => array(
+                'label'           => esc_html__('Sort Order', 'aqm-blog-post-feed'),
+                'type'            => 'select',
+                'options'         => array(
+                    'date_asc' => esc_html__('Date (Ascending)', 'aqm-blog-post-feed'),
+                    'date_desc' => esc_html__('Date (Descending)', 'aqm-blog-post-feed'),
+                    'title_asc' => esc_html__('Title (Ascending)', 'aqm-blog-post-feed'),
+                    'title_desc' => esc_html__('Title (Descending)', 'aqm-blog-post-feed'),
+                ),
+                'default'         => 'date_desc',
+            ),
         );
     }
 
@@ -302,10 +321,38 @@ public function render($attrs, $render_slug, $content = null) {
         // Apply uppercase style based on the setting
         $uppercase_style = $read_more_uppercase === 'on' ? 'text-transform: uppercase;' : '';
 
+        // Get sort order from module settings
+        $sort_order = isset($this->props['sort_order']) ? $this->props['sort_order'] : 'date_desc';
+        
+        // Determine order parameters based on sort_order
+        $orderby = 'date';
+        $order = 'DESC';
+        
+        switch ($sort_order) {
+            case 'date_asc':
+                $orderby = 'date';
+                $order = 'ASC';
+                break;
+            case 'date_desc':
+                $orderby = 'date';
+                $order = 'DESC';
+                break;
+            case 'title_asc':
+                $orderby = 'title';
+                $order = 'ASC';
+                break;
+            case 'title_desc':
+                $orderby = 'title';
+                $order = 'DESC';
+                break;
+        }
+
         // Fetch posts
         $args = array(
             'post_type' => 'post',
             'posts_per_page' => $post_limit,
+            'orderby' => $orderby,
+            'order' => $order,
         );
         $posts = new WP_Query($args);
 

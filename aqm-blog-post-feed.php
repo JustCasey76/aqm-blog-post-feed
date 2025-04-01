@@ -10,24 +10,6 @@ Author URI: https://aqmarketing.com/
 
 if (!defined('ABSPATH')) exit;
 
-// Include GitHub Updater class
-include_once(plugin_dir_path(__FILE__) . 'includes/class-github-updater.php');
-
-// Initialize GitHub Updater
-function aqm_blog_post_feed_github_updater() {
-    // Set GitHub repository information
-    $github_username = 'JustCasey76';
-    $github_repo = 'aqm-blog-post-feed';
-    
-    // Plugin main file path
-    $plugin_file = __FILE__;
-    
-    // Initialize updater - leave token parameter empty for public repositories
-    // If this is a private repository, you'll need to add your GitHub token as the fourth parameter
-    new AQM_GitHub_Updater($plugin_file, $github_username, $github_repo);
-}
-add_action('init', 'aqm_blog_post_feed_github_updater');
-
 function aqm_blog_post_feed_divi_module() {
     if (class_exists('ET_Builder_Module')) {
         $posts_limit = 10; // Set default limit for posts to display
