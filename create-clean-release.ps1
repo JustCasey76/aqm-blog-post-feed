@@ -1,85 +1,128 @@
-# PowerShell script to create a clean WordPress plugin release
-# This script creates a ZIP file without development files and with the correct directory structure
+#Requires -Version 5.0
+<#
+.SYNOPSIS
+Creates a clean, production-ready zip file for the AQM Blog Post Feed WordPress plugin.
 
-# Configuration
-$pluginName = "aqm-blog-post-feed"
+.DESCRIPTION
+This script copies the necessary plugin files to a temporary directory,
+excludes development files/folders (like .git, .github, node_modules, etc.),
+and then compresses the clean files into a zip archive named 'aqm-blog-post-feed.zip'
+suitable for distribution or updates. The final zip contains a single root folder
+'aqm-blog-post-feed' with the plugin files inside.
+
+.NOTES
+Author: AQ Marketing
+Date: 2024-05-02 
+Version: 1.1 - Modified to ensure correct zip structure.
+#>
+
+# --- Configuration ---
+$ErrorActionPreference = 'Stop' # Exit script on error
+
+# Define the source directory (where the script is located)
 $sourceDir = $PSScriptRoot
-$tempDir = Join-Path $env:TEMP "temp-$pluginName-release"
-$pluginDir = Join-Path $tempDir $pluginName
-$outputFile = Join-Path $sourceDir "$pluginName.zip"
 
-# Files and directories to exclude from the release
-$excludeList = @(
-    ".git",
-    ".github",
-    ".vscode",
-    ".DS_Store",
-    "node_modules",
-    "package.json",
-    "package-lock.json",
-    "*.zip", # Exclude existing zip files
-    "create-clean-release.ps1", # Exclude the script itself
-    "README.md" # Exclude README if not needed in release
+# Define the plugin slug (this will be the root folder name in the zip)
+$pluginSlug = "aqm-blog-post-feed"
+
+# Define the name for the final zip file
+$zipFileName = "${pluginSlug}.zip"
+$zipFilePath = Join-Path -Path $sourceDir -ChildPath $zipFileName
+
+# Define items to exclude (files or folders)
+$excludeItems = @(
+    '.git',
+    '.github',
+    '.vscode',
+    '.idea',
+    'node_modules',
+    'temp_release', # Exclude potential leftover temp directories
+    '_temp_release', # Exclude potential leftover temp directories
+    $zipFileName, # Don't include the zip file itself
+    'create-clean-release.ps1', # Exclude this script
+    'update-info.json', # Exclude old update mechanism file
+    'phpcs.xml',
+    '*.log', # Exclude log files
+    '.gitignore',
+    '.gitattributes',
+    'README.md', # Exclude README if desired
+    '.DS_Store'
 )
 
-# Clean up previous temporary directory if it exists
+# --- Preparation ---
+# Create a unique temporary directory
+$tempDirNameBase = "_temp_release"
+$tempDir = Join-Path -Path $sourceDir -ChildPath "${tempDirNameBase}_$(Get-Random)"
 if (Test-Path $tempDir) {
     Write-Host "Removing existing temporary directory: $tempDir"
     Remove-Item -Path $tempDir -Recurse -Force
 }
-
-# Create the temporary directory
-Write-Host "Creating temporary directory..."
-New-Item -Path $tempDir -ItemType Directory | Out-Null
+New-Item -ItemType Directory -Path $tempDir | Out-Null
 Write-Host "Created temporary directory: $tempDir"
 
-# Create the plugin directory structure first
-Write-Host "Creating plugin directory structure..."
-New-Item -Path $pluginDir -ItemType Directory -Force | Out-Null
+# --- Copy Files (Excluding specified items) ---
+Write-Host "Copying plugin files to temporary directory..."
+Get-ChildItem -Path $sourceDir -Recurse -Force | ForEach-Object {
+    $relativePath = $_.FullName.Substring($sourceDir.Length).TrimStart('\')
 
-# Copy files to the plugin directory, excluding development files
-Write-Host "Copying files to plugin directory..."
-Get-ChildItem -Path $sourceDir -Recurse | Where-Object {
-    # Filter out excluded items early
-    $currentItemRelativePath = $_.FullName.Substring($sourceDir.Length + 1)
+    # Check if the item or any part of its path should be excluded
     $isExcluded = $false
-    foreach ($excludedItem in $excludeList) {
-        if ($currentItemRelativePath -eq $excludedItem -or $currentItemRelativePath.StartsWith("$excludedItem\")) {
-            $isExcluded = $true
-            break
+    $pathSegments = $relativePath -split '[\/]'
+    foreach ($itemToExclude in $excludeItems) {
+        if ($itemToExclude.Contains('*')) { # Simple wildcard matching
+             if (($_.Name -like $itemToExclude) -or ($relativePath -like $itemToExclude.Replace('\','/'))) {
+                $isExcluded = $true
+                break
+            }
+        } else { # Exact match on name or path segment
+            if (($_.Name -eq $itemToExclude) -or ($pathSegments -contains $itemToExclude)) {
+                $isExcluded = $true
+                break
+            }
         }
     }
-    -not $isExcluded
-} | ForEach-Object {
-    $relativePath = $_.FullName.Substring($sourceDir.Length + 1)
-    if ($_.PSIsContainer) {
-        # It's a directory
-        $targetDir = Join-Path $pluginDir $relativePath
-        if (-not (Test-Path $targetDir)) {
-            New-Item -Path $targetDir -ItemType Directory -Force | Out-Null
+
+    if (-not $isExcluded) {
+        $destinationPath = Join-Path -Path $tempDir -ChildPath $relativePath
+        $destinationDir = Split-Path -Path $destinationPath -Parent
+
+        if (-not (Test-Path $destinationDir)) {
+            New-Item -ItemType Directory -Path $destinationDir | Out-Null
         }
-    } else {
-        # It's a file
-        $targetFile = Join-Path $pluginDir $relativePath
-        $targetDir = Split-Path -Path $targetFile -Parent
-        if (-not (Test-Path $targetDir)) {
-            New-Item -Path $targetDir -ItemType Directory -Force | Out-Null
+
+        if ($_.PSIsContainer) {
+            if (-not (Test-Path $destinationPath)) {
+                 New-Item -ItemType Directory -Path $destinationPath | Out-Null
+            }
+        } else {
+            Copy-Item -Path $_.FullName -Destination $destinationPath -Force
         }
-        Copy-Item -Path $_.FullName -Destination $targetFile -Force
     }
 }
 
-# Create the ZIP file
-Write-Host "Creating ZIP file: $outputFile"
-if (Test-Path $outputFile) {
-    Remove-Item -Path $outputFile -Force
+# --- Rename Temp Directory to Plugin Slug ---
+$finalSourcePath = Join-Path -Path $sourceDir -ChildPath $pluginSlug
+# Clean up destination if it exists from a previous failed run
+if (Test-Path $finalSourcePath) {
+    Write-Host "Removing existing destination directory before renaming: $finalSourcePath"
+    Remove-Item -Path $finalSourcePath -Recurse -Force
+}
+Write-Host "Renaming $tempDir to $finalSourcePath"
+Rename-Item -Path $tempDir -NewName $pluginSlug
+
+# --- Create the ZIP ---
+# Remove existing zip file if it exists
+if (Test-Path $zipFilePath) {
+    Write-Host "Removing existing ZIP file: $zipFilePath"
+    Remove-Item -Path $zipFilePath -Force
 }
 
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-[System.IO.Compression.ZipFile]::CreateFromDirectory($tempDir, $outputFile)
+Write-Host "Creating ZIP file: $zipFilePath from folder $finalSourcePath"
+# Zip the entire renamed directory
+Compress-Archive -Path $finalSourcePath -DestinationPath $zipFilePath -Force
 
-# Clean up temporary directory
-Write-Host "Cleaning up temporary directory..."
-Remove-Item -Path $tempDir -Recurse -Force
+# --- Cleanup ---
+Write-Host "Removing temporary source directory: $finalSourcePath"
+Remove-Item -Path $finalSourcePath -Recurse -Force
 
-Write-Host "Clean release created successfully: $outputFile"
+Write-Host "Clean release ZIP created successfully at $zipFilePath"
