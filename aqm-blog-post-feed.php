@@ -616,58 +616,77 @@ add_action('admin_notices', 'aqm_update_success_notice');
  * development files or folders that might have been included in previous versions.
  */
 function aqm_blog_post_feed_cleanup_dev_files_v3111() {
-    $plugin_path = AQM_BLOG_POST_FEED_PATH;
-    $files_to_remove = array(
-        '.git',
-        '.github',
-        '.vscode',
-        '.DS_Store',
-        'node_modules',
-        'package.json',
-        'package-lock.json',
-        'create-clean-release.ps1',
-        '*.zip', // Remove any zip files in the root
-        'README.md'
-    );
-
     global $wp_filesystem;
-    // Initialize the WP_Filesystem
+
+    // Ensure filesystem is initialized
     if (empty($wp_filesystem)) {
         require_once (ABSPATH . '/wp-admin/includes/file.php');
         WP_Filesystem();
     }
 
+    // Check if filesystem is available
     if (!$wp_filesystem) {
-        // Filesystem credentials might be required
-        error_log('AQM Blog Post Feed Cleanup: Could not initialize WP_Filesystem.');
+        error_log('AQM BPF Cleanup: WP_Filesystem could not be initialized.');
         return;
     }
 
-    error_log('AQM Blog Post Feed Cleanup: Starting cleanup in ' . $plugin_path);
+    $plugin_path = AQM_BLOG_POST_FEED_PATH;
+    $plugin_path_abs = $wp_filesystem->abspath() . str_replace(ABSPATH, '', $plugin_path);
+    $plugin_path_abs = trailingslashit($plugin_path_abs); // Ensure trailing slash
 
-    foreach ($files_to_remove as $item) {
-        $item_path = trailingslashit($plugin_path) . $item;
+    error_log('AQM BPF Cleanup: Starting cleanup in ' . $plugin_path_abs);
 
-        if (strpos($item, '*') !== false) { // Handle wildcard (simple case for *.zip)
-            $glob_path = trailingslashit($plugin_path) . $item;
-            $found_files = $wp_filesystem->glob($glob_path);
-            if ($found_files) {
-                foreach ($found_files as $file) {
-                    if ($wp_filesystem->exists($file)) {
-                         error_log('AQM Blog Post Feed Cleanup: Removing wildcard match: ' . $file);
-                         $wp_filesystem->delete($file, false); // false for files
-                    }
-                }
+    // Patterns/names to remove
+    $files_to_remove = array(
+        'create-clean-release.ps1',
+        'update-info.json',
+        'phpcs.xml',
+        'README.md',
+        '.gitignore',
+        '.gitattributes'
+        // Note: .git and .github are handled by directory pattern below
+    );
+
+    $directory_patterns_to_remove = array(
+        '.git',  // Match .git directory
+        '.github' // Match .github directory
+    );
+
+    // Get directory listing
+    $list = $wp_filesystem->dirlist($plugin_path_abs, false, false); // false for recursive, false for include paths
+
+    if ( $list === false ) {
+        error_log('AQM BPF Cleanup: Failed to list directory contents for ' . $plugin_path_abs);
+        return;
+    }
+
+    if (empty($list)) {
+        error_log('AQM BPF Cleanup: Directory listing is empty for ' . $plugin_path_abs);
+        return;
+    }
+
+    // Iterate through the files and directories at the root level
+    foreach ( $list as $item_name => $item_details ) {
+        $full_path = $plugin_path_abs . $item_name;
+
+        // Check if it's a file to remove
+        if ( $item_details['type'] === 'f' && in_array($item_name, $files_to_remove) ) {
+            error_log('AQM BPF Cleanup: Deleting file: ' . $full_path);
+            if ( !$wp_filesystem->delete($full_path, false, 'f') ) {
+                 error_log('AQM BPF Cleanup: Failed to delete file: ' . $full_path);
             }
-        } else {
-            if ($wp_filesystem->exists($item_path)) {
-                $is_dir = $wp_filesystem->is_dir($item_path);
-                error_log('AQM Blog Post Feed Cleanup: Removing: ' . $item_path . ' (is_dir: ' . ($is_dir ? 'yes' : 'no') . ')');
-                $wp_filesystem->delete($item_path, $is_dir); // true for recursive directory removal
+        }
+
+        // Check if it's a directory to remove
+        if ( $item_details['type'] === 'd' && in_array($item_name, $directory_patterns_to_remove) ) {
+             error_log('AQM BPF Cleanup: Deleting directory recursively: ' . $full_path);
+            if ( !$wp_filesystem->delete($full_path, true, 'd') ) { // true for recursive
+                 error_log('AQM BPF Cleanup: Failed to delete directory: ' . $full_path);
             }
         }
     }
-     error_log('AQM Blog Post Feed Cleanup: Finished cleanup.');
+
+    error_log('AQM BPF Cleanup: Finished.');
 }
 
 /**
