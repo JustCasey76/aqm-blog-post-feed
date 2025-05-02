@@ -61,7 +61,7 @@ function aqm_blog_post_feed_check_for_plugin_update($transient) {
     $log .= "Plugins being checked: " . print_r($transient->checked, true) . "\n";
 
     // Plugin slug, path to the main plugin file, and the URL of the update server
-    $plugin_slug = 'aqm-blog-post-feed/aqm-blog-post-feed.php';
+    $plugin_slug = 'aqm-blog-post-feed/aqm-blog-post-feed.php'; // This should match the directory/file structure on the website
     $update_url = 'https://raw.githubusercontent.com/JustCasey76/aqm-blog-post-feed/main/update-info.json';
     
     $log .= "Plugin slug: {$plugin_slug}\n";
