@@ -51,12 +51,17 @@ function aqm_blog_post_feed_admin_page() {
         delete_site_transient('update_plugins');
         wp_update_plugins();
         
-        // Add admin notice
-        add_action('admin_notices', 'aqm_update_check_notice');
+        // Add a flag to show a notice
+        set_transient('aqm_update_check_performed', true, 30);
         
-        // Redirect to updates page
-        wp_redirect(admin_url('update-core.php'));
+        // Redirect back to the same page
+        wp_redirect(add_query_arg('update-check', 'performed', $_SERVER['REQUEST_URI']));
         exit;
+    }
+    
+    // Show notice if we just performed an update check
+    if (isset($_GET['update-check']) && $_GET['update-check'] === 'performed') {
+        add_action('admin_notices', 'aqm_update_check_notice');
     }
     
     // Get plugin data
@@ -110,8 +115,8 @@ function aqm_blog_post_feed_admin_page() {
                 
                 <?php if ($has_update): ?>
                     <p style="margin-top: 15px;">
-                        <a href="<?php echo esc_url(admin_url('update-core.php')); ?>" class="button">
-                            <span class="dashicons dashicons-download" style="margin-top: 3px;"></span> Go to Updates Page
+                        <a href="<?php echo esc_url(admin_url('plugins.php')); ?>" class="button">
+                            <span class="dashicons dashicons-update" style="margin-top: 3px;"></span> View Available Updates
                         </a>
                     </p>
                 <?php endif; ?>

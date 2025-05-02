@@ -318,12 +318,37 @@ function aqm_blog_post_feed_handle_update_check() {
         delete_site_transient('update_plugins');
         wp_update_plugins();
         
-        // Redirect to updates page
-        wp_redirect(admin_url('update-core.php'));
+        // Add a transient to show a notice
+        set_transient('aqm_update_check_performed', true, 30);
+        
+        // Redirect back to plugins page
+        wp_redirect(admin_url('plugins.php'));
         exit;
     }
 }
+
+/**
+ * Display admin notice after checking for updates on the plugins page
+ */
+function aqm_blog_post_feed_update_check_plugins_notice() {
+    // Only show on plugins page
+    $screen = get_current_screen();
+    if ($screen->id !== 'plugins') {
+        return;
+    }
+    
+    // Check if we just performed an update check
+    if (get_transient('aqm_update_check_performed')) {
+        delete_transient('aqm_update_check_performed');
+        ?>
+        <div class="notice notice-info is-dismissible">
+            <p><?php _e('Checking for AQM Blog Post Feed updates. If an update is available, it will be shown in the list below.', 'aqm-blog-post-feed'); ?></p>
+        </div>
+        <?php
+    }
+}
 add_action('admin_init', 'aqm_blog_post_feed_handle_update_check');
+add_action('admin_notices', 'aqm_blog_post_feed_update_check_plugins_notice');
 
 function aqm_blog_post_feed_divi_module() {
     if (class_exists('ET_Builder_Module')) {
