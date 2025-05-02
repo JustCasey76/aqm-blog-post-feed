@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 3.1.5
+Version: 3.1.6
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 */
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) exit;
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
-define('AQM_BLOG_POST_FEED_VERSION', '3.1.5');
+define('AQM_BLOG_POST_FEED_VERSION', '3.1.6');
 
 // Include admin page
 require_once AQM_BLOG_POST_FEED_PATH . 'includes/admin-page.php';
@@ -184,48 +184,65 @@ add_action('upgrader_process_complete', 'aqm_blog_post_feed_pre_update', 10, 2);
 /**
  * Modify the source directory for GitHub-sourced updates
  * 
- * @param bool|WP_Error $response Response object for upgrader.
+ * @param string $source File source location.
+ * @param string $remote_source Remote file source location.
+ * @param WP_Upgrader $upgrader WP_Upgrader instance.
  * @param array $hook_extra Extra arguments passed to hooked filters.
- * @param array $result Installation result data.
- * @return bool|WP_Error Modified response.
+ * @return string|WP_Error Modified source.
  */
 function aqm_blog_post_feed_upgrader_source_selection($source, $remote_source, $upgrader, $hook_extra = null) {
     global $wp_filesystem;
     
+    error_log('AQM Debug: upgrader_source_selection running');
+    error_log('AQM Debug: Source: ' . $source);
+    error_log('AQM Debug: Remote source: ' . $remote_source);
+    
     // Check if this is our plugin being updated
     $our_plugin = false;
+    
+    // Check by plugin slug if available
     if (isset($hook_extra['plugin']) && $hook_extra['plugin'] === 'aqm-blog-post-feed/aqm-blog-post-feed.php') {
         $our_plugin = true;
+        error_log('AQM Debug: Our plugin detected by slug');
     }
     
     // Also check for our plugin by looking at the source directory name
-    if (strpos($source, 'aqm-blog-post-feed-') !== false) {
+    if (strpos($source, 'aqm-blog-post-feed') !== false) {
         $our_plugin = true;
+        error_log('AQM Debug: Our plugin detected by directory name: ' . $source);
     }
     
     // If this is our plugin, set the reactivation transient
     if ($our_plugin) {
         error_log('AQM Debug: Setting reactivation transient before update');
-        set_transient('aqm_reactivate_after_update', '1', 300); // Store for 5 minutes
+        set_transient('aqm_reactivate_after_update', '1', 600); // Store for 10 minutes
         
         // Also store that the plugin should be active
         update_option('aqm_blog_post_feed_active', true);
         
+        // Get the directory name from the source
+        $source_name = basename($source);
+        error_log('AQM Debug: Source name: ' . $source_name);
+        
         // Fix the directory structure for GitHub source code ZIPs
-        if (strpos($source, 'aqm-blog-post-feed-') !== false) {
-            $corrected_source = trailingslashit($remote_source) . 'aqm-blog-post-feed/';
+        if (strpos($source_name, 'aqm-blog-post-feed') !== false) {
+            $corrected_source = trailingslashit($remote_source) . 'aqm-blog-post-feed';
+            error_log('AQM Debug: Corrected source path: ' . $corrected_source);
             
             // Check if the corrected source already exists
             if ($wp_filesystem->exists($corrected_source)) {
+                error_log('AQM Debug: Corrected source already exists, deleting it');
                 $wp_filesystem->delete($corrected_source, true);
             }
             
             // Move files from GitHub's format to the correct plugin folder structure
+            error_log('AQM Debug: Moving from ' . $source . ' to ' . $corrected_source);
             if (!$wp_filesystem->move($source, $corrected_source)) {
+                error_log('AQM Debug: Failed to move directory');
                 return new WP_Error('rename_failed', 'Unable to rename the update to match the existing directory.');
             }
             
-            error_log('AQM Debug: Corrected directory structure for GitHub source code ZIP');
+            error_log('AQM Debug: Successfully corrected directory structure for GitHub source code ZIP');
             return $corrected_source;
         }
     }
