@@ -1,9 +1,9 @@
 <?php
 /*
-Plugin Name: AQM Blog Post Feed V2.6
+Plugin Name: AQM Blog Post Feed V2.7
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 2.6
+Version: 2.7
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 */
