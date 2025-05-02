@@ -141,13 +141,17 @@ if (!class_exists('AQM_Blog_Post_Feed_GitHub_Updater')) {
             if (version_compare($current_version, $remote_version, '<')) {
                 error_log("AQM Updater: New version available - Current: {$current_version}, Remote: {$remote_version}");
                 
+                // Construct the correct download URL for the release asset
+                $download_url = "https://github.com/{$this->username}/{$this->repo}/releases/download/{$this->github_api_result->tag_name}/aqm-blog-post-feed.zip";
+                error_log("AQM Updater: Constructed download URL: " . $download_url);
+
                 // Construct the plugin information
                 $update = array(
                     'slug' => $this->slug,
                     'plugin' => $this->slug,
                     'new_version' => $remote_version,
                     'url' => $this->plugin_data['PluginURI'],
-                    'package' => $this->github_api_result->zipball_url,
+                    'package' => $download_url, // Use the constructed asset URL
                 );
                 
                 // Add update info to the transient
@@ -197,7 +201,7 @@ if (!class_exists('AQM_Blog_Post_Feed_GitHub_Updater')) {
                     'description' => $this->plugin_data['Description'],
                     'changelog' => $this->github_api_result->body ?? 'No changelog provided',
                 ),
-                'download_link' => $this->github_api_result->zipball_url,
+                'download_link' => "https://github.com/{$this->username}/{$this->repo}/releases/download/{$this->github_api_result->tag_name}/aqm-blog-post-feed.zip", // Use the constructed asset URL
             );
 
             return (object) $plugin_info;
