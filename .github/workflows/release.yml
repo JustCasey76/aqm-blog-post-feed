@@ -1,0 +1,57 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+jobs:
+  build:
+    name: Create Release and Upload Asset
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Get version from tag
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/v}
+
+      - name: Update version in update-info.json
+        run: |
+          sed -i 's/"new_version": "[^"]*"/"new_version": "${{ steps.get_version.outputs.VERSION }}"/' update-info.json
+          sed -i 's|"package": "[^"]*"|"package": "https://github.com/JustCasey76/aqm-blog-post-feed/releases/download/v${{ steps.get_version.outputs.VERSION }}/aqm-blog-post-feed.zip"|' update-info.json
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add update-info.json
+          git commit -m "Update version to ${{ steps.get_version.outputs.VERSION }}"
+          git push
+
+      - name: Create ZIP file
+        run: |
+          mkdir -p /tmp/plugin-build
+          rsync -av --exclude='.git' --exclude='.github' --exclude='*.zip' . /tmp/plugin-build/aqm-blog-post-feed/
+          cd /tmp/plugin-build
+          zip -r aqm-blog-post-feed.zip aqm-blog-post-feed
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: /tmp/plugin-build/aqm-blog-post-feed.zip
+          asset_name: aqm-blog-post-feed.zip
+          asset_content_type: application/zip
