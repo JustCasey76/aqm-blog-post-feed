@@ -1,9 +1,9 @@
 <?php
 /*
-Plugin Name: AQM Blog Post Feed V2.9
+Plugin Name: AQM Blog Post Feed V3.0
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 2.9
+Version: 3.0
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 */
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) exit;
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
-define('AQM_BLOG_POST_FEED_VERSION', '2.9');
+define('AQM_BLOG_POST_FEED_VERSION', '3.0');
 
 // Include admin page
 require_once AQM_BLOG_POST_FEED_PATH . 'includes/admin-page.php';
@@ -498,3 +498,4 @@ function aqm_load_more_posts_handler() {
 }
 add_action('wp_ajax_aqm_load_more_posts', 'aqm_load_more_posts_handler');
 add_action('wp_ajax_nopriv_aqm_load_more_posts', 'aqm_load_more_posts_handler');
+
