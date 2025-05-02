@@ -3,7 +3,7 @@
 
 # Configuration
 $pluginName = "aqm-blog-post-feed"
-$pluginVersion = "3.1.10"
+$pluginVersion = "3.1.10" # Ensure version is correct
 $sourceDir = $PSScriptRoot
 $tempDir = Join-Path $env:TEMP "temp-$pluginName-release"
 $pluginDir = Join-Path $tempDir $pluginName
@@ -13,21 +13,24 @@ $outputFile = Join-Path $sourceDir "$pluginName.zip"
 $excludeList = @(
     ".git",
     ".github",
-    ".gitignore",
-    "create-release.ps1",
-    "create-clean-release.ps1",
-    "README.md",
-    "LICENSE",
+    ".vscode",
     ".DS_Store",
-    "Thumbs.db"
+    "node_modules",
+    "package.json",
+    "package-lock.json",
+    "*.zip", # Exclude existing zip files
+    "create-clean-release.ps1", # Exclude the script itself
+    "README.md" # Exclude README if not needed in release
 )
 
-Write-Host "Creating clean release for $pluginName version $pluginVersion"
-
-# Create a temporary directory
+# Clean up previous temporary directory if it exists
 if (Test-Path $tempDir) {
+    Write-Host "Removing existing temporary directory: $tempDir"
     Remove-Item -Path $tempDir -Recurse -Force
 }
+
+# Create the temporary directory
+Write-Host "Creating temporary directory..."
 New-Item -Path $tempDir -ItemType Directory | Out-Null
 Write-Host "Created temporary directory: $tempDir"
 
@@ -37,36 +40,33 @@ New-Item -Path $pluginDir -ItemType Directory -Force | Out-Null
 
 # Copy files to the plugin directory, excluding development files
 Write-Host "Copying files to plugin directory..."
-Get-ChildItem -Path $sourceDir -Recurse | ForEach-Object {
-    $relativePath = $_.FullName.Substring($sourceDir.Length + 1)
-    
-    # Check if the file/directory should be excluded
-    $exclude = $false
-    foreach ($item in $excludeList) {
-        if ($relativePath -eq $item -or $relativePath.StartsWith("$item\")) {
-            $exclude = $true
+Get-ChildItem -Path $sourceDir -Recurse | Where-Object {
+    # Filter out excluded items early
+    $currentItemRelativePath = $_.FullName.Substring($sourceDir.Length + 1)
+    $isExcluded = $false
+    foreach ($excludedItem in $excludeList) {
+        if ($currentItemRelativePath -eq $excludedItem -or $currentItemRelativePath.StartsWith("$excludedItem\")) {
+            $isExcluded = $true
             break
         }
     }
-    
-    if (-not $exclude) {
-        if ($_.PSIsContainer) {
-            # It's a directory
-            $targetDir = Join-Path $pluginDir $relativePath
-            if (-not (Test-Path $targetDir)) {
-                New-Item -Path $targetDir -ItemType Directory -Force | Out-Null
-            }
-        } else {
-            # It's a file
-            $targetFile = Join-Path $pluginDir $relativePath
-            $targetDir = Split-Path -Path $targetFile -Parent
-            
-            if (-not (Test-Path $targetDir)) {
-                New-Item -Path $targetDir -ItemType Directory -Force | Out-Null
-            }
-            
-            Copy-Item -Path $_.FullName -Destination $targetFile -Force
+    -not $isExcluded
+} | ForEach-Object {
+    $relativePath = $_.FullName.Substring($sourceDir.Length + 1)
+    if ($_.PSIsContainer) {
+        # It's a directory
+        $targetDir = Join-Path $pluginDir $relativePath
+        if (-not (Test-Path $targetDir)) {
+            New-Item -Path $targetDir -ItemType Directory -Force | Out-Null
         }
+    } else {
+        # It's a file
+        $targetFile = Join-Path $pluginDir $relativePath
+        $targetDir = Split-Path -Path $targetFile -Parent
+        if (-not (Test-Path $targetDir)) {
+            New-Item -Path $targetDir -ItemType Directory -Force | Out-Null
+        }
+        Copy-Item -Path $_.FullName -Destination $targetFile -Force
     }
 }
 
@@ -79,9 +79,8 @@ if (Test-Path $outputFile) {
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [System.IO.Compression.ZipFile]::CreateFromDirectory($tempDir, $outputFile)
 
-# Clean up
+# Clean up temporary directory
 Write-Host "Cleaning up temporary directory..."
 Remove-Item -Path $tempDir -Recurse -Force
 
-Write-Host "Release created successfully: $outputFile"
-Write-Host "You can now upload this ZIP file to your WordPress site or distribution platform."
+Write-Host "Clean release created successfully: $outputFile"
