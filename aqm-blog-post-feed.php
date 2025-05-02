@@ -39,19 +39,40 @@ function aqm_blog_post_feed_deactivate() {
 }
 
 // Initialize GitHub Updater
-function aqm_github_updater_init() {
-    // Include the updater class
-    require_once plugin_dir_path(__FILE__) . 'includes/class-github-updater.php';
-    
-    // Initialize the updater
-    new AQM_Blog_Post_Feed_GitHub_Updater(
-        __FILE__,                        // Plugin File
-        'JustCasey76',                   // GitHub username
-        'aqm-blog-post-feed',            // GitHub repository name
-        ''                               // Optional GitHub access token (for private repos)
-    );
+function aqm_blog_post_feed_check_for_plugin_update($transient) {
+    // If no update transient or transient is empty, return
+    if (empty($transient->checked)) {
+        return $transient;
+    }
+
+    // Plugin slug, path to the main plugin file, and the URL of the update server
+    $plugin_slug = 'aqm-blog-post-feed/aqm-blog-post-feed.php';
+    $update_url = 'https://raw.githubusercontent.com/JustCasey76/aqm-blog-post-feed/main/update-info.json';
+
+    // Fetch update information from GitHub
+    $response = wp_remote_get($update_url);
+    if (is_wp_error($response)) {
+        return $transient;
+    }
+
+    // Parse the JSON response
+    $update_info = json_decode(wp_remote_retrieve_body($response));
+
+    // If a new version is available, modify the transient to reflect the update
+    if (isset($transient->checked[$plugin_slug]) && version_compare($transient->checked[$plugin_slug], $update_info->new_version, '<')) {
+        $plugin_data = array(
+            'slug'        => 'aqm-blog-post-feed',
+            'plugin'      => $plugin_slug,
+            'new_version' => $update_info->new_version,
+            'url'         => $update_info->url,
+            'package'     => $update_info->package, // URL of the plugin zip file
+        );
+        $transient->response[$plugin_slug] = (object) $plugin_data;
+    }
+
+    return $transient;
 }
-add_action('init', 'aqm_github_updater_init');
+add_filter('pre_set_site_transient_update_plugins', 'aqm_blog_post_feed_check_for_plugin_update');
 
 // Add function to reactivate plugin after update
 function aqm_blog_post_feed_maybe_reactivate() {
