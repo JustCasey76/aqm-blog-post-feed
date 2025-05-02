@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 3.1.7
+Version: 3.1.9
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 */
@@ -14,10 +14,66 @@ if (!defined('ABSPATH')) exit;
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
-define('AQM_BLOG_POST_FEED_VERSION', '3.1.7');
+define('AQM_BLOG_POST_FEED_VERSION', '3.1.9');
 
 // Include admin page
 require_once AQM_BLOG_POST_FEED_PATH . 'includes/admin-page.php';
+
+// Include the WP GitHub Plugin Updater
+require_once AQM_BLOG_POST_FEED_PATH . 'includes/updater.php';
+
+/**
+ * Cleanup development files from existing installations
+ * This will run once after updating to version 3.1.8 or higher
+ */
+function aqm_blog_post_feed_cleanup_dev_files() {
+    // Check if cleanup has already been performed
+    if (get_option('aqm_dev_files_cleaned_3_1_8') !== 'yes') {
+        $plugin_dir = plugin_dir_path(__FILE__);
+        
+        // List of development directories/files to remove
+        $dev_items = array(
+            '.github',
+            '.git',
+            '.gitignore',
+            'create-release.ps1',
+            'create-clean-release.ps1'
+        );
+        
+        foreach ($dev_items as $item) {
+            $path = $plugin_dir . $item;
+            if (file_exists($path)) {
+                if (is_dir($path)) {
+                    // Recursive directory deletion
+                    aqm_blog_post_feed_delete_directory($path);
+                } else {
+                    // File deletion
+                    @unlink($path);
+                }
+            }
+        }
+        
+        // Mark cleanup as completed
+        update_option('aqm_dev_files_cleaned_3_1_8', 'yes');
+    }
+}
+
+/**
+ * Helper function to recursively delete a directory
+ */
+function aqm_blog_post_feed_delete_directory($dir) {
+    if (!file_exists($dir)) return;
+    
+    $files = array_diff(scandir($dir), array('.', '..'));
+    foreach ($files as $file) {
+        $path = $dir . '/' . $file;
+        is_dir($path) ? aqm_blog_post_feed_delete_directory($path) : @unlink($path);
+    }
+    return @rmdir($dir);
+}
+
+// Run cleanup on plugin activation or update
+add_action('admin_init', 'aqm_blog_post_feed_cleanup_dev_files');
 
 // Plugin version history and update mechanism has been simplified
 // The GitHub updater class now uses a minimal implementation to prevent errors
@@ -42,224 +98,11 @@ function aqm_blog_post_feed_deactivate() {
     update_option('aqm_blog_post_feed_active', false);
 }
 
-// Initialize GitHub Updater
-function aqm_blog_post_feed_check_for_plugin_update($transient) {
-    // Debug log
-    if (!file_exists(WP_CONTENT_DIR . '/debug-update.log')) {
-        @file_put_contents(WP_CONTENT_DIR . '/debug-update.log', '');
-    }
-    $log = "\n\n" . date('Y-m-d H:i:s') . " - Update check triggered\n";
-    
-    // If no update transient or transient is empty, return
-    if (empty($transient->checked)) {
-        $log .= "Transient checked is empty, returning\n";
-        @file_put_contents(WP_CONTENT_DIR . '/debug-update.log', $log, FILE_APPEND);
-        return $transient;
-    }
-    
-    // Log the plugins being checked
-    $log .= "Plugins being checked: " . print_r($transient->checked, true) . "\n";
+// The update system has been replaced with a more robust GitHub updater in includes/updater.php
 
-    // Plugin slug, path to the main plugin file, and the URL of the update server
-    $plugin_slug = 'aqm-blog-post-feed/aqm-blog-post-feed.php'; // This should match the directory/file structure on the website
-    $update_url = 'https://raw.githubusercontent.com/JustCasey76/aqm-blog-post-feed/main/update-info.json';
-    
-    $log .= "Plugin slug: {$plugin_slug}\n";
-    $log .= "Update URL: {$update_url}\n";
+// The old upgrader_process_complete action has been replaced by the GitHub updater in includes/updater.php
 
-    // Fetch update information from GitHub
-    $response = wp_remote_get($update_url);
-    if (is_wp_error($response)) {
-        $log .= "Error fetching update info: " . $response->get_error_message() . "\n";
-        @file_put_contents(WP_CONTENT_DIR . '/debug-update.log', $log, FILE_APPEND);
-        return $transient;
-    }
-    
-    $response_code = wp_remote_retrieve_response_code($response);
-    $log .= "Response code: {$response_code}\n";
-    
-    // Parse the JSON response
-    $response_body = wp_remote_retrieve_body($response);
-    $log .= "Response body: {$response_body}\n";
-    
-    $update_info = json_decode($response_body);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        $log .= "JSON decode error: " . json_last_error_msg() . "\n";
-        @file_put_contents(WP_CONTENT_DIR . '/debug-update.log', $log, FILE_APPEND);
-        return $transient;
-    }
-    
-    $log .= "Decoded update info: " . print_r($update_info, true) . "\n";
-    
-    // Check if the plugin is in the transient
-    if (!isset($transient->checked[$plugin_slug])) {
-        // Try to find the correct plugin slug
-        $log .= "Plugin slug not found in transient, searching for alternatives...\n";
-        $found = false;
-        
-        foreach ($transient->checked as $slug => $version) {
-            $log .= "Checking slug: {$slug} with version {$version}\n";
-            if (strpos($slug, 'aqm-blog-post-feed') !== false) {
-                $plugin_slug = $slug;
-                $log .= "Found matching slug: {$plugin_slug}\n";
-                $found = true;
-                break;
-            }
-        }
-        
-        if (!$found) {
-            $log .= "No matching plugin slug found\n";
-            @file_put_contents(WP_CONTENT_DIR . '/debug-update.log', $log, FILE_APPEND);
-            return $transient;
-        }
-    }
-
-    // If a new version is available, modify the transient to reflect the update
-    $current_version = isset($transient->checked[$plugin_slug]) ? $transient->checked[$plugin_slug] : '0';
-    $log .= "Current version: {$current_version}, Latest version: {$update_info->new_version}\n";
-    
-    if (version_compare($current_version, $update_info->new_version, '<')) {
-        $log .= "New version available, adding to update list\n";
-        
-        // Store that we need to reactivate the plugin after update
-        if (is_plugin_active($plugin_slug)) {
-            $log .= "Plugin is currently active, storing activation state\n";
-            update_option('aqm_blog_post_feed_active', true);
-            set_transient('aqm_reactivate_after_update', '1', 600); // Store for 10 minutes
-        }
-        
-        // Add our custom update URL instead of the standard package URL
-        // This will trigger our custom update handler
-        $plugin_data = array(
-            'slug'        => 'aqm-blog-post-feed',
-            'plugin'      => $plugin_slug,
-            'new_version' => $update_info->new_version,
-            'url'         => $update_info->url,
-            'package'     => admin_url('admin-ajax.php?action=aqm_custom_update&version=' . $update_info->new_version),
-        );
-        $transient->response[$plugin_slug] = (object) $plugin_data;
-        $log .= "Added to transient response with custom update URL\n";
-    } else {
-        $log .= "No new version available\n";
-    }
-    
-    // Write debug log
-    @file_put_contents(WP_CONTENT_DIR . '/debug-update.log', $log, FILE_APPEND);
-    
-    return $transient;
-}
-add_filter('pre_set_site_transient_update_plugins', 'aqm_blog_post_feed_check_for_plugin_update');
-
-/**
- * Store the plugin's active status before update
- */
-function aqm_blog_post_feed_pre_update($upgrader, $options) {
-    // Check if this is a plugin update operation
-    if ($options['action'] == 'update' && $options['type'] == 'plugin') {
-        // Check if our plugin is being updated
-        $our_plugin = false;
-        if (isset($options['plugins'])) {
-            foreach ($options['plugins'] as $plugin) {
-                if ($plugin == AQM_BLOG_POST_FEED_BASENAME) {
-                    $our_plugin = true;
-                    break;
-                }
-            }
-        }
-        
-        // If our plugin is being updated and it's active, store that information
-        if ($our_plugin) {
-            if (is_plugin_active(AQM_BLOG_POST_FEED_BASENAME)) {
-                error_log('AQM Debug: Plugin is active, storing status before update');
-                update_option('aqm_blog_post_feed_active', true);
-                set_transient('aqm_reactivate_after_update', '1', 600); // Store for 10 minutes
-                
-                // Register shutdown function to ensure plugin gets reactivated
-                register_shutdown_function(function() {
-                    error_log('AQM Debug: Shutdown function running to ensure plugin activation');
-                    if (!is_plugin_active(AQM_BLOG_POST_FEED_BASENAME)) {
-                        error_log('AQM Debug: Activating plugin in shutdown function');
-                        activate_plugin(AQM_BLOG_POST_FEED_BASENAME);
-                    }
-                });
-            } else {
-                error_log('AQM Debug: Plugin is not active before update');
-                update_option('aqm_blog_post_feed_active', false);
-            }
-        }
-    }
-}
-add_action('upgrader_process_complete', 'aqm_blog_post_feed_pre_update', 10, 2);
-
-/**
- * Modify the source directory for GitHub-sourced updates
- * 
- * @param string $source File source location.
- * @param string $remote_source Remote file source location.
- * @param WP_Upgrader $upgrader WP_Upgrader instance.
- * @param array $hook_extra Extra arguments passed to hooked filters.
- * @return string|WP_Error Modified source.
- */
-function aqm_blog_post_feed_upgrader_source_selection($source, $remote_source, $upgrader, $hook_extra = null) {
-    global $wp_filesystem;
-    
-    error_log('AQM Debug: upgrader_source_selection running');
-    error_log('AQM Debug: Source: ' . $source);
-    error_log('AQM Debug: Remote source: ' . $remote_source);
-    
-    // Check if this is our plugin being updated
-    $our_plugin = false;
-    
-    // Check by plugin slug if available
-    if (isset($hook_extra['plugin']) && $hook_extra['plugin'] === 'aqm-blog-post-feed/aqm-blog-post-feed.php') {
-        $our_plugin = true;
-        error_log('AQM Debug: Our plugin detected by slug');
-    }
-    
-    // Also check for our plugin by looking at the source directory name
-    if (strpos($source, 'aqm-blog-post-feed') !== false) {
-        $our_plugin = true;
-        error_log('AQM Debug: Our plugin detected by directory name: ' . $source);
-    }
-    
-    // If this is our plugin, set the reactivation transient
-    if ($our_plugin) {
-        error_log('AQM Debug: Setting reactivation transient before update');
-        set_transient('aqm_reactivate_after_update', '1', 600); // Store for 10 minutes
-        
-        // Also store that the plugin should be active
-        update_option('aqm_blog_post_feed_active', true);
-        
-        // Get the directory name from the source
-        $source_name = basename($source);
-        error_log('AQM Debug: Source name: ' . $source_name);
-        
-        // Fix the directory structure for GitHub source code ZIPs
-        if (strpos($source_name, 'aqm-blog-post-feed') !== false) {
-            $corrected_source = trailingslashit($remote_source) . 'aqm-blog-post-feed';
-            error_log('AQM Debug: Corrected source path: ' . $corrected_source);
-            
-            // Check if the corrected source already exists
-            if ($wp_filesystem->exists($corrected_source)) {
-                error_log('AQM Debug: Corrected source already exists, deleting it');
-                $wp_filesystem->delete($corrected_source, true);
-            }
-            
-            // Move files from GitHub's format to the correct plugin folder structure
-            error_log('AQM Debug: Moving from ' . $source . ' to ' . $corrected_source);
-            if (!$wp_filesystem->move($source, $corrected_source)) {
-                error_log('AQM Debug: Failed to move directory');
-                return new WP_Error('rename_failed', 'Unable to rename the update to match the existing directory.');
-            }
-            
-            error_log('AQM Debug: Successfully corrected directory structure for GitHub source code ZIP');
-            return $corrected_source;
-        }
-    }
-    
-    return $source;
-}
-add_filter('upgrader_source_selection', 'aqm_blog_post_feed_upgrader_source_selection', 10, 4);
+// The old upgrader_source_selection filter has been replaced by the GitHub updater in includes/updater.php
 
 // Add function to reactivate plugin after update
 function aqm_blog_post_feed_maybe_reactivate() {
