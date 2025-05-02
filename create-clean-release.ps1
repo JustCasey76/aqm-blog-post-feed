@@ -64,6 +64,7 @@ Write-Host "Created temporary directory: $tempDir"
 Write-Host "Copying plugin files to temporary directory..."
 Get-ChildItem -Path $sourceDir -Recurse -Force | ForEach-Object {
     $relativePath = $_.FullName.Substring($sourceDir.Length).TrimStart('\')
+    Write-Host "Processing: $relativePath"
 
     # Check if the item or any part of its path should be excluded
     $isExcluded = $false
