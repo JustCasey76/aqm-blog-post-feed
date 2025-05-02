@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 3.1.4
+Version: 3.1.5
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 */
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) exit;
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
-define('AQM_BLOG_POST_FEED_VERSION', '3.1.4');
+define('AQM_BLOG_POST_FEED_VERSION', '3.1.5');
 
 // Include admin page
 require_once AQM_BLOG_POST_FEED_PATH . 'includes/admin-page.php';
@@ -143,18 +143,43 @@ add_filter('pre_set_site_transient_update_plugins', 'aqm_blog_post_feed_check_fo
 /**
  * Store the plugin's active status before update
  */
-function aqm_blog_post_feed_pre_update() {
-    // Check if the plugin is active
-    if (is_plugin_active(AQM_BLOG_POST_FEED_BASENAME)) {
-        error_log('AQM Debug: Plugin is active, storing status before update');
-        update_option('aqm_blog_post_feed_active', true);
-        set_transient('aqm_reactivate_after_update', '1', 300); // Store for 5 minutes
-    } else {
-        error_log('AQM Debug: Plugin is not active before update');
-        update_option('aqm_blog_post_feed_active', false);
+function aqm_blog_post_feed_pre_update($upgrader, $options) {
+    // Check if this is a plugin update operation
+    if ($options['action'] == 'update' && $options['type'] == 'plugin') {
+        // Check if our plugin is being updated
+        $our_plugin = false;
+        if (isset($options['plugins'])) {
+            foreach ($options['plugins'] as $plugin) {
+                if ($plugin == AQM_BLOG_POST_FEED_BASENAME) {
+                    $our_plugin = true;
+                    break;
+                }
+            }
+        }
+        
+        // If our plugin is being updated and it's active, store that information
+        if ($our_plugin) {
+            if (is_plugin_active(AQM_BLOG_POST_FEED_BASENAME)) {
+                error_log('AQM Debug: Plugin is active, storing status before update');
+                update_option('aqm_blog_post_feed_active', true);
+                set_transient('aqm_reactivate_after_update', '1', 600); // Store for 10 minutes
+                
+                // Register shutdown function to ensure plugin gets reactivated
+                register_shutdown_function(function() {
+                    error_log('AQM Debug: Shutdown function running to ensure plugin activation');
+                    if (!is_plugin_active(AQM_BLOG_POST_FEED_BASENAME)) {
+                        error_log('AQM Debug: Activating plugin in shutdown function');
+                        activate_plugin(AQM_BLOG_POST_FEED_BASENAME);
+                    }
+                });
+            } else {
+                error_log('AQM Debug: Plugin is not active before update');
+                update_option('aqm_blog_post_feed_active', false);
+            }
+        }
     }
 }
-add_action('upgrader_process_complete', 'aqm_blog_post_feed_pre_update', 1);
+add_action('upgrader_process_complete', 'aqm_blog_post_feed_pre_update', 10, 2);
 
 /**
  * Modify the source directory for GitHub-sourced updates
@@ -213,6 +238,10 @@ add_filter('upgrader_source_selection', 'aqm_blog_post_feed_upgrader_source_sele
 function aqm_blog_post_feed_maybe_reactivate() {
     error_log('AQM Debug: aqm_blog_post_feed_maybe_reactivate running.');
     
+    // Force activation on every admin page load for a short period after update
+    // This is an aggressive approach but ensures the plugin gets reactivated
+    $force_activation = false;
+    
     // Only run in admin
     if (!is_admin()) {
         error_log('AQM Debug: Not admin, exiting.');
@@ -222,8 +251,11 @@ function aqm_blog_post_feed_maybe_reactivate() {
     // Check if the transient was set by the updater hook
     if (get_transient('aqm_reactivate_after_update') === '1') {
         error_log('AQM Debug: Reactivation transient found.');
-        // Delete the transient so it doesn't run again
-        delete_transient('aqm_reactivate_after_update');
+        $force_activation = true;
+        
+        // Don't delete the transient yet - keep it for multiple attempts
+        // We'll reset the expiration time instead
+        set_transient('aqm_reactivate_after_update', '1', 600); // Reset for another 10 minutes
 
         // Ensure the plugin file actually exists before trying to activate
         if (!file_exists(WP_PLUGIN_DIR . '/' . AQM_BLOG_POST_FEED_BASENAME)) {
@@ -231,9 +263,10 @@ function aqm_blog_post_feed_maybe_reactivate() {
             return; // Exit if the plugin file isn't there
         }
         
-        // Check if already active (maybe it worked this time?)
+        // Check if already active
         if (is_plugin_active(AQM_BLOG_POST_FEED_BASENAME)) {
-            error_log('AQM Debug: Plugin already active, no reactivation needed.');
+            error_log('AQM Debug: Plugin already active, deleting transient.');
+            delete_transient('aqm_reactivate_after_update'); // Only delete when we confirm it's active
             return;
         }
 
@@ -266,7 +299,7 @@ function aqm_blog_post_feed_maybe_reactivate() {
     error_log('AQM Debug Fallback Check: Is currently active? ' . ($is_active ? 'Yes' : 'No'));
 
     // Check if we need to reactivate (fallback check)
-    if ($should_be_active && !$is_active) {
+    if (($should_be_active && !$is_active) || $force_activation) {
         error_log('AQM Debug Fallback: Plugin needs reactivation. Checking file existence...');
         // Ensure the plugin file actually exists before trying to activate
         if (!file_exists(WP_PLUGIN_DIR . '/' . AQM_BLOG_POST_FEED_BASENAME)) {
@@ -280,6 +313,8 @@ function aqm_blog_post_feed_maybe_reactivate() {
             error_log('AQM Debug Fallback: Error reactivating plugin: ' . $result->get_error_message());
         } else {
             error_log('AQM Debug Fallback: Plugin reactivated successfully.');
+            // If we successfully reactivated, we can delete the transient
+            delete_transient('aqm_reactivate_after_update');
         }
         
         wp_clean_plugins_cache(true);
@@ -381,6 +416,32 @@ function aqm_blog_post_feed_update_check_plugins_notice() {
 }
 add_action('admin_init', 'aqm_blog_post_feed_handle_update_check');
 add_action('admin_notices', 'aqm_blog_post_feed_update_check_plugins_notice');
+
+/**
+ * Force plugin activation on admin page load if needed
+ * This is a last-resort approach to ensure the plugin stays activated
+ */
+function aqm_blog_post_feed_force_activation() {
+    // Only check once per page load
+    static $checked = false;
+    if ($checked) return;
+    $checked = true;
+    
+    // Only run in admin
+    if (!is_admin()) return;
+    
+    // Check if our plugin should be active
+    if (get_option('aqm_blog_post_feed_active', false) || get_transient('aqm_reactivate_after_update') === '1') {
+        // If it's not active, activate it
+        if (!is_plugin_active(AQM_BLOG_POST_FEED_BASENAME)) {
+            error_log('AQM Debug: Force activation hook - plugin is not active but should be. Activating...');
+            activate_plugin(AQM_BLOG_POST_FEED_BASENAME);
+            wp_clean_plugins_cache(true);
+            error_log('AQM Debug: Force activation hook - activation attempt complete');
+        }
+    }
+}
+add_action('admin_init', 'aqm_blog_post_feed_force_activation', 1); // Run very early
 
 function aqm_blog_post_feed_divi_module() {
     if (class_exists('ET_Builder_Module')) {
