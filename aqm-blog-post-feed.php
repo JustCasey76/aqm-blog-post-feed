@@ -14,6 +14,10 @@ if (!defined('ABSPATH')) exit;
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
+define('AQM_BLOG_POST_FEED_VERSION', '2.7');
+
+// Include admin page
+require_once AQM_BLOG_POST_FEED_PATH . 'includes/admin-page.php';
 
 // Plugin version history and update mechanism has been simplified
 // The GitHub updater class now uses a minimal implementation to prevent errors
@@ -171,6 +175,56 @@ function aqm_blog_post_feed_reactivation_notice() {
     }
 }
 add_action('admin_notices', 'aqm_blog_post_feed_reactivation_notice');
+
+/**
+ * Add plugin action links
+ *
+ * @param array $links Default plugin action links
+ * @param string $file Plugin file
+ * @return array Modified plugin action links
+ */
+function aqm_blog_post_feed_plugin_action_links($links, $file) {
+    if ($file === AQM_BLOG_POST_FEED_BASENAME) {
+        // Add settings link
+        $settings_link = '<a href="' . admin_url('options-general.php?page=aqm-blog-post-feed') . '">' . __('Settings', 'aqm-blog-post-feed') . '</a>';
+        array_unshift($links, $settings_link);
+        
+        // Add check for updates link
+        $check_updates_url = wp_nonce_url(
+            add_query_arg(
+                array(
+                    'aqm_action' => 'check_updates',
+                    'plugin' => AQM_BLOG_POST_FEED_BASENAME
+                ),
+                admin_url('plugins.php')
+            ),
+            'aqm_check_updates_action'
+        );
+        $check_updates_link = '<a href="' . esc_url($check_updates_url) . '">' . __('Check for Updates', 'aqm-blog-post-feed') . '</a>';
+        $links[] = $check_updates_link;
+    }
+    return $links;
+}
+add_filter('plugin_action_links', 'aqm_blog_post_feed_plugin_action_links', 10, 2);
+
+/**
+ * Handle the check for updates action
+ */
+function aqm_blog_post_feed_handle_update_check() {
+    if (isset($_GET['aqm_action']) && $_GET['aqm_action'] === 'check_updates' && 
+        isset($_GET['plugin']) && $_GET['plugin'] === AQM_BLOG_POST_FEED_BASENAME && 
+        isset($_GET['_wpnonce']) && wp_verify_nonce($_GET['_wpnonce'], 'aqm_check_updates_action')) {
+        
+        // Force WordPress to check for updates
+        delete_site_transient('update_plugins');
+        wp_update_plugins();
+        
+        // Redirect to updates page
+        wp_redirect(admin_url('update-core.php'));
+        exit;
+    }
+}
+add_action('admin_init', 'aqm_blog_post_feed_handle_update_check');
 
 function aqm_blog_post_feed_divi_module() {
     if (class_exists('ET_Builder_Module')) {
