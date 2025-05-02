@@ -44,7 +44,8 @@ $updateInfo.new_version = $Version
 if ($FtpHost -and $FtpUser -and $FtpPassword) {
     $updateInfo.package = "https://stevesservicesllc.com/wp-content/plugins/aqm-blog-post-feed/updates/aqm-blog-post-feed.zip"
 } else {
-    $updateInfo.package = "https://github.com/JustCasey76/aqm-blog-post-feed/releases/download/v$Version/aqm-blog-post-feed.zip"
+    # Use GitHub's automatically generated source code ZIP
+    $updateInfo.package = "https://github.com/JustCasey76/aqm-blog-post-feed/archive/refs/tags/v$Version.zip"
 }
 
 $updateInfo | ConvertTo-Json | Set-Content $updateInfoFile

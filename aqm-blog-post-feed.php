@@ -140,6 +140,43 @@ function aqm_blog_post_feed_check_for_plugin_update($transient) {
 }
 add_filter('pre_set_site_transient_update_plugins', 'aqm_blog_post_feed_check_for_plugin_update');
 
+/**
+ * Modify the source directory for GitHub-sourced updates
+ * 
+ * @param bool|WP_Error $response Response object for upgrader.
+ * @param array $hook_extra Extra arguments passed to hooked filters.
+ * @param array $result Installation result data.
+ * @return bool|WP_Error Modified response.
+ */
+function aqm_blog_post_feed_upgrader_source_selection($source, $remote_source, $upgrader, $hook_extra = null) {
+    global $wp_filesystem;
+    
+    // Only run for our plugin
+    if (!isset($hook_extra['plugin']) || $hook_extra['plugin'] !== 'aqm-blog-post-feed/aqm-blog-post-feed.php') {
+        return $source;
+    }
+    
+    // Check if this is a GitHub source code ZIP
+    if (strpos($source, 'aqm-blog-post-feed-') !== false) {
+        $corrected_source = trailingslashit($remote_source) . 'aqm-blog-post-feed/';
+        
+        // Check if the corrected source already exists
+        if ($wp_filesystem->exists($corrected_source)) {
+            $wp_filesystem->delete($corrected_source, true);
+        }
+        
+        // Move files from GitHub's format to the correct plugin folder structure
+        if (!$wp_filesystem->move($source, $corrected_source)) {
+            return new WP_Error('rename_failed', 'Unable to rename the update to match the existing directory.');
+        }
+        
+        return $corrected_source;
+    }
+    
+    return $source;
+}
+add_filter('upgrader_source_selection', 'aqm_blog_post_feed_upgrader_source_selection', 10, 4);
+
 // Add function to reactivate plugin after update
 function aqm_blog_post_feed_maybe_reactivate() {
     error_log('AQM Debug: aqm_blog_post_feed_maybe_reactivate running.');
