@@ -44,26 +44,82 @@ function aqm_blog_post_feed_deactivate() {
 
 // Initialize GitHub Updater
 function aqm_blog_post_feed_check_for_plugin_update($transient) {
+    // Debug log
+    if (!file_exists(WP_CONTENT_DIR . '/debug-update.log')) {
+        @file_put_contents(WP_CONTENT_DIR . '/debug-update.log', '');
+    }
+    $log = "\n\n" . date('Y-m-d H:i:s') . " - Update check triggered\n";
+    
     // If no update transient or transient is empty, return
     if (empty($transient->checked)) {
+        $log .= "Transient checked is empty, returning\n";
+        @file_put_contents(WP_CONTENT_DIR . '/debug-update.log', $log, FILE_APPEND);
         return $transient;
     }
+    
+    // Log the plugins being checked
+    $log .= "Plugins being checked: " . print_r($transient->checked, true) . "\n";
 
     // Plugin slug, path to the main plugin file, and the URL of the update server
     $plugin_slug = 'aqm-blog-post-feed/aqm-blog-post-feed.php';
     $update_url = 'https://raw.githubusercontent.com/JustCasey76/aqm-blog-post-feed/main/update-info.json';
+    
+    $log .= "Plugin slug: {$plugin_slug}\n";
+    $log .= "Update URL: {$update_url}\n";
 
     // Fetch update information from GitHub
     $response = wp_remote_get($update_url);
     if (is_wp_error($response)) {
+        $log .= "Error fetching update info: " . $response->get_error_message() . "\n";
+        @file_put_contents(WP_CONTENT_DIR . '/debug-update.log', $log, FILE_APPEND);
         return $transient;
     }
-
+    
+    $response_code = wp_remote_retrieve_response_code($response);
+    $log .= "Response code: {$response_code}\n";
+    
     // Parse the JSON response
-    $update_info = json_decode(wp_remote_retrieve_body($response));
+    $response_body = wp_remote_retrieve_body($response);
+    $log .= "Response body: {$response_body}\n";
+    
+    $update_info = json_decode($response_body);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        $log .= "JSON decode error: " . json_last_error_msg() . "\n";
+        @file_put_contents(WP_CONTENT_DIR . '/debug-update.log', $log, FILE_APPEND);
+        return $transient;
+    }
+    
+    $log .= "Decoded update info: " . print_r($update_info, true) . "\n";
+    
+    // Check if the plugin is in the transient
+    if (!isset($transient->checked[$plugin_slug])) {
+        // Try to find the correct plugin slug
+        $log .= "Plugin slug not found in transient, searching for alternatives...\n";
+        $found = false;
+        
+        foreach ($transient->checked as $slug => $version) {
+            $log .= "Checking slug: {$slug} with version {$version}\n";
+            if (strpos($slug, 'aqm-blog-post-feed') !== false) {
+                $plugin_slug = $slug;
+                $log .= "Found matching slug: {$plugin_slug}\n";
+                $found = true;
+                break;
+            }
+        }
+        
+        if (!$found) {
+            $log .= "No matching plugin slug found\n";
+            @file_put_contents(WP_CONTENT_DIR . '/debug-update.log', $log, FILE_APPEND);
+            return $transient;
+        }
+    }
 
     // If a new version is available, modify the transient to reflect the update
-    if (isset($transient->checked[$plugin_slug]) && version_compare($transient->checked[$plugin_slug], $update_info->new_version, '<')) {
+    $current_version = isset($transient->checked[$plugin_slug]) ? $transient->checked[$plugin_slug] : '0';
+    $log .= "Current version: {$current_version}, Latest version: {$update_info->new_version}\n";
+    
+    if (version_compare($current_version, $update_info->new_version, '<')) {
+        $log .= "New version available, adding to update list\n";
         $plugin_data = array(
             'slug'        => 'aqm-blog-post-feed',
             'plugin'      => $plugin_slug,
@@ -72,8 +128,14 @@ function aqm_blog_post_feed_check_for_plugin_update($transient) {
             'package'     => $update_info->package, // URL of the plugin zip file
         );
         $transient->response[$plugin_slug] = (object) $plugin_data;
+        $log .= "Added to transient response\n";
+    } else {
+        $log .= "No new version available\n";
     }
-
+    
+    // Write debug log
+    @file_put_contents(WP_CONTENT_DIR . '/debug-update.log', $log, FILE_APPEND);
+    
     return $transient;
 }
 add_filter('pre_set_site_transient_update_plugins', 'aqm_blog_post_feed_check_for_plugin_update');
