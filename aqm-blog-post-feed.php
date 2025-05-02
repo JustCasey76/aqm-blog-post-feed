@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 3.1.6
+Version: 3.1.7
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 */
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) exit;
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
-define('AQM_BLOG_POST_FEED_VERSION', '3.1.6');
+define('AQM_BLOG_POST_FEED_VERSION', '3.1.7');
 
 // Include admin page
 require_once AQM_BLOG_POST_FEED_PATH . 'includes/admin-page.php';
@@ -120,15 +120,25 @@ function aqm_blog_post_feed_check_for_plugin_update($transient) {
     
     if (version_compare($current_version, $update_info->new_version, '<')) {
         $log .= "New version available, adding to update list\n";
+        
+        // Store that we need to reactivate the plugin after update
+        if (is_plugin_active($plugin_slug)) {
+            $log .= "Plugin is currently active, storing activation state\n";
+            update_option('aqm_blog_post_feed_active', true);
+            set_transient('aqm_reactivate_after_update', '1', 600); // Store for 10 minutes
+        }
+        
+        // Add our custom update URL instead of the standard package URL
+        // This will trigger our custom update handler
         $plugin_data = array(
             'slug'        => 'aqm-blog-post-feed',
             'plugin'      => $plugin_slug,
             'new_version' => $update_info->new_version,
             'url'         => $update_info->url,
-            'package'     => $update_info->package, // URL of the plugin zip file
+            'package'     => admin_url('admin-ajax.php?action=aqm_custom_update&version=' . $update_info->new_version),
         );
         $transient->response[$plugin_slug] = (object) $plugin_data;
-        $log .= "Added to transient response\n";
+        $log .= "Added to transient response with custom update URL\n";
     } else {
         $log .= "No new version available\n";
     }
@@ -633,5 +643,127 @@ function aqm_load_more_posts_handler() {
 }
 add_action('wp_ajax_aqm_load_more_posts', 'aqm_load_more_posts_handler');
 add_action('wp_ajax_nopriv_aqm_load_more_posts', 'aqm_load_more_posts_handler');
+
+/**
+ * Custom update handler to properly handle GitHub updates
+ */
+function aqm_custom_update_handler() {
+    // Security check
+    if (!current_user_can('update_plugins')) {
+        wp_die('Sorry, you are not allowed to update plugins for this site.');
+    }
+    
+    // Get the requested version
+    $version = isset($_GET['version']) ? sanitize_text_field($_GET['version']) : '';
+    if (empty($version)) {
+        wp_die('No version specified.');
+    }
+    
+    // Log the update request
+    error_log('AQM Custom Update: Starting custom update process for version ' . $version);
+    
+    // Get the GitHub package URL
+    $package_url = 'https://github.com/JustCasey76/aqm-blog-post-feed/archive/refs/tags/v' . $version . '.zip';
+    error_log('AQM Custom Update: Package URL: ' . $package_url);
+    
+    // Download the package
+    $download_file = download_url($package_url);
+    if (is_wp_error($download_file)) {
+        error_log('AQM Custom Update: Download failed: ' . $download_file->get_error_message());
+        wp_die('Failed to download update package: ' . $download_file->get_error_message());
+    }
+    
+    error_log('AQM Custom Update: Package downloaded to: ' . $download_file);
+    
+    // Store that the plugin was active
+    $plugin_slug = 'aqm-blog-post-feed/aqm-blog-post-feed.php';
+    $was_active = is_plugin_active($plugin_slug);
+    if ($was_active) {
+        error_log('AQM Custom Update: Plugin was active before update');
+        update_option('aqm_blog_post_feed_active', true);
+    } else {
+        error_log('AQM Custom Update: Plugin was NOT active before update');
+        update_option('aqm_blog_post_feed_active', false);
+    }
+    
+    // Get WP_Filesystem
+    global $wp_filesystem;
+    if (empty($wp_filesystem)) {
+        require_once ABSPATH . '/wp-admin/includes/file.php';
+        WP_Filesystem();
+    }
+    
+    // Create the plugins directory if it doesn't exist
+    $plugins_dir = WP_PLUGIN_DIR;
+    if (!$wp_filesystem->is_dir($plugins_dir)) {
+        error_log('AQM Custom Update: Creating plugins directory');
+        $wp_filesystem->mkdir($plugins_dir);
+    }
+    
+    // Unzip the package
+    $unzip_result = unzip_file($download_file, $plugins_dir);
+    if (is_wp_error($unzip_result)) {
+        error_log('AQM Custom Update: Unzip failed: ' . $unzip_result->get_error_message());
+        @unlink($download_file);
+        wp_die('Failed to unzip update package: ' . $unzip_result->get_error_message());
+    }
+    
+    error_log('AQM Custom Update: Package unzipped successfully');
+    
+    // Clean up the zip file
+    @unlink($download_file);
+    
+    // Get the extracted directory name
+    $extracted_dir = $plugins_dir . '/aqm-blog-post-feed-' . $version;
+    error_log('AQM Custom Update: Extracted directory: ' . $extracted_dir);
+    
+    // Remove the existing plugin directory if it exists
+    $plugin_dir = $plugins_dir . '/aqm-blog-post-feed';
+    if ($wp_filesystem->is_dir($plugin_dir)) {
+        error_log('AQM Custom Update: Removing existing plugin directory');
+        $wp_filesystem->delete($plugin_dir, true);
+    }
+    
+    // Rename the extracted directory to the correct plugin directory
+    if (!$wp_filesystem->move($extracted_dir, $plugin_dir)) {
+        error_log('AQM Custom Update: Failed to rename directory');
+        wp_die('Failed to rename plugin directory.');
+    }
+    
+    error_log('AQM Custom Update: Directory renamed successfully');
+    
+    // Clear plugin cache
+    wp_clean_plugins_cache(true);
+    
+    // Reactivate the plugin if it was active
+    if ($was_active) {
+        error_log('AQM Custom Update: Reactivating plugin');
+        activate_plugin($plugin_slug);
+        
+        if (is_plugin_active($plugin_slug)) {
+            error_log('AQM Custom Update: Plugin reactivated successfully');
+        } else {
+            error_log('AQM Custom Update: Failed to reactivate plugin');
+        }
+    }
+    
+    // Set a transient to indicate successful update
+    set_transient('aqm_update_successful', '1', 300);
+    
+    // Redirect back to the plugins page
+    wp_redirect(admin_url('plugins.php?aqm_updated=1'));
+    exit;
+}
+add_action('wp_ajax_aqm_custom_update', 'aqm_custom_update_handler');
+
+/**
+ * Display a success notice after update
+ */
+function aqm_update_success_notice() {
+    if (isset($_GET['aqm_updated']) && $_GET['aqm_updated'] == '1') {
+        echo '<div class="notice notice-success is-dismissible"><p>AQM Blog Post Feed plugin has been successfully updated and activated.</p></div>';
+    }
+}
+add_action('admin_notices', 'aqm_update_success_notice');
 
 
