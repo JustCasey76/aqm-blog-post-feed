@@ -3,7 +3,6 @@
 
 # Configuration
 $pluginName = "aqm-blog-post-feed"
-$pluginVersion = "3.1.10" # Ensure version is correct
 $sourceDir = $PSScriptRoot
 $tempDir = Join-Path $env:TEMP "temp-$pluginName-release"
 $pluginDir = Join-Path $tempDir $pluginName

@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 3.1.10
+Version: 3.1.11
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 */
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) exit;
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
-define('AQM_BLOG_POST_FEED_VERSION', '3.1.10');
+define('AQM_BLOG_POST_FEED_VERSION', '3.1.11');
 
 // Include admin page
 require_once AQM_BLOG_POST_FEED_PATH . 'includes/admin-page.php';
@@ -608,3 +608,96 @@ function aqm_update_success_notice() {
     }
 }
 add_action('admin_notices', 'aqm_update_success_notice');
+
+/**
+ * Cleanup unnecessary files after updating to version 3.1.11+.
+ *
+ * This function runs once after the plugin is updated to remove
+ * development files or folders that might have been included in previous versions.
+ */
+function aqm_blog_post_feed_cleanup_dev_files_v3111() {
+    $plugin_path = AQM_BLOG_POST_FEED_PATH;
+    $files_to_remove = array(
+        '.git',
+        '.github',
+        '.vscode',
+        '.DS_Store',
+        'node_modules',
+        'package.json',
+        'package-lock.json',
+        'create-clean-release.ps1',
+        '*.zip', // Remove any zip files in the root
+        'README.md'
+    );
+
+    global $wp_filesystem;
+    // Initialize the WP_Filesystem
+    if (empty($wp_filesystem)) {
+        require_once (ABSPATH . '/wp-admin/includes/file.php');
+        WP_Filesystem();
+    }
+
+    if (!$wp_filesystem) {
+        // Filesystem credentials might be required
+        error_log('AQM Blog Post Feed Cleanup: Could not initialize WP_Filesystem.');
+        return;
+    }
+
+    error_log('AQM Blog Post Feed Cleanup: Starting cleanup in ' . $plugin_path);
+
+    foreach ($files_to_remove as $item) {
+        $item_path = trailingslashit($plugin_path) . $item;
+
+        if (strpos($item, '*') !== false) { // Handle wildcard (simple case for *.zip)
+            $glob_path = trailingslashit($plugin_path) . $item;
+            $found_files = $wp_filesystem->glob($glob_path);
+            if ($found_files) {
+                foreach ($found_files as $file) {
+                    if ($wp_filesystem->exists($file)) {
+                         error_log('AQM Blog Post Feed Cleanup: Removing wildcard match: ' . $file);
+                         $wp_filesystem->delete($file, false); // false for files
+                    }
+                }
+            }
+        } else {
+            if ($wp_filesystem->exists($item_path)) {
+                $is_dir = $wp_filesystem->is_dir($item_path);
+                error_log('AQM Blog Post Feed Cleanup: Removing: ' . $item_path . ' (is_dir: ' . ($is_dir ? 'yes' : 'no') . ')');
+                $wp_filesystem->delete($item_path, $is_dir); // true for recursive directory removal
+            }
+        }
+    }
+     error_log('AQM Blog Post Feed Cleanup: Finished cleanup.');
+}
+
+/**
+ * Hook into the upgrader process complete action to run the cleanup.
+ *
+ * @param WP_Upgrader $upgrader_object
+ * @param array       $options
+ */
+function aqm_blog_post_feed_trigger_cleanup_v3111($upgrader_object, $options) {
+    // Check if it was a plugin update
+    if ($options['action'] == 'update' && $options['type'] == 'plugin') {
+        // Check if our plugin was updated
+        if (isset($options['plugins']) && is_array($options['plugins'])) {
+            $this_plugin = AQM_BLOG_POST_FEED_BASENAME;
+            foreach ($options['plugins'] as $plugin) {
+                if ($plugin == $this_plugin) {
+                    // Check if cleanup has already run for v3.1.11 or later
+                    if (!get_option('aqm_bpf_cleanup_v3111_done')) {
+                         error_log('AQM Blog Post Feed Cleanup: Triggering cleanup function after update.');
+                         aqm_blog_post_feed_cleanup_dev_files_v3111();
+                         // Mark cleanup as done
+                         update_option('aqm_bpf_cleanup_v3111_done', true);
+                         error_log('AQM Blog Post Feed Cleanup: Marked cleanup as done.');
+                    } else {
+                         error_log('AQM Blog Post Feed Cleanup: Cleanup already performed.');
+                    }
+                    break; // Exit the loop once our plugin is found
+                }
+            }
+        }
+    }
+}
+add_action('upgrader_process_complete', 'aqm_blog_post_feed_trigger_cleanup_v3111', 10, 2);
