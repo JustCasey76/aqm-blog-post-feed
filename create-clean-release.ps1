@@ -1,12 +1,13 @@
 # PowerShell script to create a clean WordPress plugin release
-# This script creates a ZIP file without development files
+# This script creates a ZIP file without development files and with the correct directory structure
 
 # Configuration
 $pluginName = "aqm-blog-post-feed"
-$pluginVersion = "3.1.9"
+$pluginVersion = "3.1.10"
 $sourceDir = $PSScriptRoot
 $tempDir = Join-Path $env:TEMP "temp-$pluginName-release"
-$outputFile = Join-Path $sourceDir "$pluginName-$pluginVersion.zip"
+$pluginDir = Join-Path $tempDir $pluginName
+$outputFile = Join-Path $sourceDir "$pluginName.zip"
 
 # Files and directories to exclude from the release
 $excludeList = @(
@@ -30,8 +31,12 @@ if (Test-Path $tempDir) {
 New-Item -Path $tempDir -ItemType Directory | Out-Null
 Write-Host "Created temporary directory: $tempDir"
 
-# Copy files to the temporary directory, excluding development files
-Write-Host "Copying files to temporary directory..."
+# Create the plugin directory structure first
+Write-Host "Creating plugin directory structure..."
+New-Item -Path $pluginDir -ItemType Directory -Force | Out-Null
+
+# Copy files to the plugin directory, excluding development files
+Write-Host "Copying files to plugin directory..."
 Get-ChildItem -Path $sourceDir -Recurse | ForEach-Object {
     $relativePath = $_.FullName.Substring($sourceDir.Length + 1)
     
@@ -47,20 +52,20 @@ Get-ChildItem -Path $sourceDir -Recurse | ForEach-Object {
     if (-not $exclude) {
         if ($_.PSIsContainer) {
             # It's a directory
-            $targetDir = Join-Path $tempDir $relativePath
+            $targetDir = Join-Path $pluginDir $relativePath
             if (-not (Test-Path $targetDir)) {
-                New-Item -Path $targetDir -ItemType Directory | Out-Null
+                New-Item -Path $targetDir -ItemType Directory -Force | Out-Null
             }
         } else {
             # It's a file
-            $targetFile = Join-Path $tempDir $relativePath
+            $targetFile = Join-Path $pluginDir $relativePath
             $targetDir = Split-Path -Path $targetFile -Parent
             
             if (-not (Test-Path $targetDir)) {
-                New-Item -Path $targetDir -ItemType Directory | Out-Null
+                New-Item -Path $targetDir -ItemType Directory -Force | Out-Null
             }
             
-            Copy-Item -Path $_.FullName -Destination $targetFile
+            Copy-Item -Path $_.FullName -Destination $targetFile -Force
         }
     }
 }

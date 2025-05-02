@@ -6,8 +6,8 @@
  * and ensures the plugin remains activated after updates.
  */
 
-if (!class_exists('AQM_GitHub_Updater')) {
-    class AQM_GitHub_Updater {
+if (!class_exists('AQM_Blog_Post_Feed_GitHub_Updater')) {
+    class AQM_Blog_Post_Feed_GitHub_Updater {
         private $slug;
         private $plugin_data;
         private $username;
@@ -292,7 +292,7 @@ function aqm_blog_post_feed_github_updater_init() {
     }
     
     // Initialize the updater with your GitHub username and repo
-    new AQM_GitHub_Updater(
+    new AQM_Blog_Post_Feed_GitHub_Updater(
         AQM_BLOG_POST_FEED_FILE,
         'JustCasey76',
         'aqm-blog-post-feed'
