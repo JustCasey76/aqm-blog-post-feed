@@ -36,7 +36,10 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
         add_filter('pre_set_site_transient_update_plugins', array($this, 'check_for_update'));
         add_filter('plugins_api', array($this, 'plugin_api_call'), 10, 3);
         
-        // Add a hook to handle plugin activation persistence
+        // Add hook to set reactivation transient BEFORE install
+        add_action('upgrader_pre_install', array($this, 'set_reactivation_transient'), 10, 2);
+
+        // Add a hook to handle plugin activation persistence AFTER install (may or may not be needed with transient method)
         add_action('upgrader_process_complete', array($this, 'handle_activation_persistence'), 10, 2);
         
         // Get plugin data
@@ -201,6 +204,24 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
         return $plugin_info;
     }
     
+    /**
+     * Set a transient before the update is installed.
+     * This allows the plugin to reactivate itself after the update.
+     *
+     * @param bool|WP_Error $response The result of the installation up to this point.
+     * @param array         $hook_extra Extra arguments passed to the hook.
+     * @return bool|WP_Error The original response
+     */
+    public function set_reactivation_transient($response, $hook_extra) {
+        // Check if this is our plugin being updated
+        if (isset($hook_extra['plugin']) && $hook_extra['plugin'] === $this->slug) {
+            error_log('AQM Debug Updater: Setting reactivation transient for ' . $this->slug);
+            // Set a transient that the main plugin file will check on admin_init
+            set_transient('aqm_reactivate_after_update', '1', HOUR_IN_SECONDS);
+        }
+        return $response; // Must return the response
+    }
+
     /**
      * Handles plugin activation persistence after update.
      *
