@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 1.0.7
+Version: 1.0.8
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 */
@@ -52,9 +52,6 @@ function aqm_github_updater_init() {
     );
 }
 add_action('init', 'aqm_github_updater_init');
-
-// Load the main module class
-require_once plugin_dir_path( __FILE__ ) . 'includes/AQM_Blog_Post_Feed_Module.php';
 
 // Conditionally load the GitHub updater class only in the admin area
 if ( is_admin() ) {
@@ -122,6 +119,23 @@ function aqm_blog_post_feed_reactivation_notice() {
 }
 add_action('admin_notices', 'aqm_blog_post_feed_reactivation_notice');
 
+// Function to initialize the Divi module
+function aqm_bpf_initialize_module() {
+    // Ensure Divi's base module class exists before loading our module
+    if ( class_exists('ET_Builder_Module') ) {
+        require_once plugin_dir_path( __FILE__ ) . 'includes/AQM_Blog_Post_Feed_Module.php';
+    } else {
+        // Optionally log an error or display an admin notice if Divi isn't active
+        add_action('admin_notices', function() {
+            echo '<div class="notice notice-error is-dismissible"><p>';
+            echo esc_html__( 'AQM Blog Post Feed requires the Divi Builder to be active.', 'aqm-blog-post-feed' );
+            echo '</p></div>';
+        });
+    }
+}
+// Hook the initialization function to Divi's ready action
+add_action( 'et_builder_ready', 'aqm_bpf_initialize_module' );
+
 function aqm_blog_post_feed_divi_module() {
     if (class_exists('ET_Builder_Module')) {
         $posts_limit = 10; // Set default limit for posts to display
@@ -130,8 +144,6 @@ function aqm_blog_post_feed_divi_module() {
         if (isset($_GET['limit']) && is_numeric($_GET['limit'])) {
             $posts_limit = (int) $_GET['limit'];
         }
-
-        include_once(plugin_dir_path(__FILE__) . 'includes/AQM_Blog_Post_Feed_Module.php');
 
         if (!class_exists('AQM_Blog_Post_Feed_Module')) {
             class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
