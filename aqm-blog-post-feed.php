@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 1.0.3
+Version: 1.0.4
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 */
@@ -53,95 +53,66 @@ function aqm_github_updater_init() {
 }
 add_action('init', 'aqm_github_updater_init');
 
-// Add function to reactivate plugin after update
-function aqm_blog_post_feed_maybe_reactivate() {
-    error_log('AQM Debug: aqm_blog_post_feed_maybe_reactivate running.');
-    
-    // Only run in admin
-    if (!is_admin()) {
-        error_log('AQM Debug: Not admin, exiting.');
-        return;
-    }
+// Load the main module class
+require_once plugin_dir_path( __FILE__ ) . 'includes/AQM_Blog_Post_Feed_Module.php';
 
-    // Check if the transient was set by the updater hook
-    if (get_transient('aqm_reactivate_after_update') === '1') {
-        error_log('AQM Debug: Reactivation transient found.');
-        // Delete the transient so it doesn't run again
-        delete_transient('aqm_reactivate_after_update');
+// Conditionally load the GitHub updater class only in the admin area
+if ( is_admin() ) {
+    require_once plugin_dir_path( __FILE__ ) . 'includes/class-github-updater.php';
+    // Instantiate the updater
+    new AQM_Blog_Post_Feed_GitHub_Updater( __FILE__ );
+}
 
-        // Ensure the plugin file actually exists before trying to activate
-        if (!file_exists(WP_PLUGIN_DIR . '/' . AQM_BLOG_POST_FEED_BASENAME)) {
-            error_log('AQM Debug: Plugin file MISSING, cannot reactivate: ' . WP_PLUGIN_DIR . '/' . AQM_BLOG_POST_FEED_BASENAME);
-            return; // Exit if the plugin file isn't there
-        }
-        
-        // Check if already active (maybe it worked this time?)
-        if (is_plugin_active(AQM_BLOG_POST_FEED_BASENAME)) {
-            error_log('AQM Debug: Plugin already active, no reactivation needed.');
-            return;
-        }
+/**
+ * Attempts to reactivate the plugin after an update is complete.
+ * Hooks into 'upgrader_process_complete'.
+ *
+ * @param WP_Upgrader $upgrader_object WP_Upgrader instance.
+ * @param array       $options         Array of bulk item update data.
+ */
+function aqm_blog_post_feed_reactivate_on_update( $upgrader_object, $options ) {
+    // Check if the transient was set
+    if ( get_transient( 'aqm_reactivate_after_update' ) === '1' ) {
+        error_log('[AQM BPF Reactivate] Reactivation transient found.');
+        // Delete the transient so we don't try again unnecessarily
+        delete_transient( 'aqm_reactivate_after_update' );
 
-        error_log('AQM Debug: Plugin needs reactivation based on transient. Activating...');
-        $result = activate_plugin(AQM_BLOG_POST_FEED_BASENAME);
-        if (is_wp_error($result)) {
-            error_log('AQM Debug: Error reactivating plugin: ' . $result->get_error_message());
-        } else {
-            error_log('AQM Debug: Plugin reactivated successfully via transient.');
-            wp_clean_plugins_cache(true);
-            error_log('AQM Debug: Plugin cache cleaned after transient reactivation.');
+        // Check if the update action was for plugins and specifically our plugin
+        $current_plugin_path = plugin_basename( __FILE__ );
+        if ( isset( $options['action'], $options['type'], $options['plugins'] ) &&
+             $options['action'] === 'update' && $options['type'] === 'plugin' ) {
 
-            // Redirect logic might still be needed if activation happens but state isn't reflected immediately
-            global $pagenow;
-            if ($pagenow === 'plugins.php' && !isset($_GET['aqm_reactivated'])) {
-                error_log('AQM Debug: On plugins.php after transient activation, redirecting...');
-                wp_redirect(add_query_arg('aqm_reactivated', '1', $_SERVER['REQUEST_URI']));
-                exit;
+            $reactivated = false;
+            foreach ( $options['plugins'] as $plugin ) {
+                if ( $plugin === $current_plugin_path ) {
+                    error_log('[AQM BPF Reactivate] Update process completed for our plugin: ' . esc_html($current_plugin_path));
+                    // Check if the plugin is inactive
+                    if ( ! is_plugin_active( $current_plugin_path ) ) {
+                        error_log('[AQM BPF Reactivate] Plugin is inactive, attempting reactivation...');
+                        $result = activate_plugin( $current_plugin_path );
+                        if ( is_wp_error( $result ) ) {
+                            error_log('[AQM BPF Reactivate] Error reactivating plugin: ' . $result->get_error_message());
+                        } else {
+                            error_log('[AQM BPF Reactivate] Plugin successfully reactivated.');
+                            $reactivated = true;
+                        }
+                    } else {
+                        error_log('[AQM BPF Reactivate] Plugin is already active.');
+                    }
+                    break; // Found our plugin, no need to loop further
+                }
             }
-        }
-    } else {
-        error_log('AQM Debug: Reactivation transient NOT found.');
-    }
-
-    // --- Keep the original logic as a fallback, but log it differently ---
-    $should_be_active = get_option('aqm_blog_post_feed_active', false);
-    $is_active = is_plugin_active(AQM_BLOG_POST_FEED_BASENAME);
-    
-    error_log('AQM Debug Fallback Check: Should be active? ' . ($should_be_active ? 'Yes' : 'No'));
-    error_log('AQM Debug Fallback Check: Is currently active? ' . ($is_active ? 'Yes' : 'No'));
-
-    // Check if we need to reactivate (fallback check)
-    if ($should_be_active && !$is_active) {
-        error_log('AQM Debug Fallback: Plugin needs reactivation. Checking file existence...');
-        // Ensure the plugin file actually exists before trying to activate
-        if (!file_exists(WP_PLUGIN_DIR . '/' . AQM_BLOG_POST_FEED_BASENAME)) {
-            error_log('AQM Debug Fallback: Plugin file MISSING, cannot reactivate: ' . WP_PLUGIN_DIR . '/' . AQM_BLOG_POST_FEED_BASENAME);
-            return; // Exit if the plugin file isn't there
-        }
-
-        error_log('AQM Debug Fallback: Activating...');
-        $result = activate_plugin(AQM_BLOG_POST_FEED_BASENAME);
-        if (is_wp_error($result)) {
-            error_log('AQM Debug Fallback: Error reactivating plugin: ' . $result->get_error_message());
         } else {
-            error_log('AQM Debug Fallback: Plugin reactivated successfully.');
+            error_log('[AQM BPF Reactivate] Update hook fired, but action/type/plugin info not as expected or did not match.');
+            error_log('[AQM BPF Reactivate] Options array: ' . print_r($options, true)); // Log options for debugging
         }
-        
-        wp_clean_plugins_cache(true);
-        error_log('AQM Debug Fallback: Plugin cache cleaned.');
-        
-        global $pagenow;
-        if ($pagenow === 'plugins.php' && !isset($_GET['aqm_reactivated'])) {
-            error_log('AQM Debug Fallback: On plugins.php, redirecting...');
-            wp_redirect(add_query_arg('aqm_reactivated', '1', $_SERVER['REQUEST_URI']));
-            exit;
-        } else {
-             error_log('AQM Debug Fallback: Not redirecting (Page: ' . $pagenow . ', Reactivated Param: ' . (isset($_GET['aqm_reactivated']) ? 'Set' : 'Not Set') . ')');
-        }
+
     } else {
-        error_log('AQM Debug Fallback: No reactivation needed.');
+         // Optional: Log if the hook fired but transient wasn't found
+         // error_log('[AQM BPF Reactivate] upgrader_process_complete hook fired, but reactivation transient not found.');
     }
 }
-add_action('admin_init', 'aqm_blog_post_feed_maybe_reactivate', 1); // Priority 1 to run early
+add_action( 'upgrader_process_complete', 'aqm_blog_post_feed_reactivate_on_update', 10, 2 );
 
 // Add a notice to show when the plugin has been reactivated
 function aqm_blog_post_feed_reactivation_notice() {

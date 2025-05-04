@@ -208,18 +208,24 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
      * Set a transient before the update is installed.
      * This allows the plugin to reactivate itself after the update.
      *
-     * @param bool|WP_Error $response The result of the installation up to this point.
-     * @param array         $hook_extra Extra arguments passed to the hook.
-     * @return bool|WP_Error The original response
+     * @param mixed $true Default value (usually true).
+     * @param array $hook_extra Extra arguments passed to the filter. Contains 'plugin' if relevant.
+     * @return mixed Original $true value.
      */
-    public function set_reactivation_transient($response, $hook_extra) {
-        // Check if this is our plugin being updated
-        if (isset($hook_extra['plugin']) && $hook_extra['plugin'] === $this->slug) {
-            error_log('AQM Debug Updater: Setting reactivation transient for ' . $this->slug);
-            // Set a transient that the main plugin file will check on admin_init
-            set_transient('aqm_reactivate_after_update', '1', HOUR_IN_SECONDS);
+    public function set_reactivation_transient( $true, $hook_extra ) {
+        // Check if this hook is for our plugin
+        if ( is_array( $hook_extra ) && isset( $hook_extra['plugin'] ) && $hook_extra['plugin'] === $this->slug ) {
+            error_log('[AQM BPF Updater] upgrader_pre_install hook fired for plugin: ' . esc_html($hook_extra['plugin']) . ' (Our slug: ' . esc_html($this->slug) . ')');
+            // Set a transient that we can check after the update
+            $set = set_transient( 'aqm_reactivate_after_update', '1', HOUR_IN_SECONDS );
+            error_log('[AQM BPF Updater] Setting reactivation transient. Success: ' . ($set ? 'true' : 'false'));
+        } else {
+            // Optional: Log if the hook fired but didn't match our plugin
+            // if (is_array($hook_extra) && isset($hook_extra['plugin'])) {
+            //     error_log('[AQM BPF Updater] upgrader_pre_install hook fired for a different plugin: ' . esc_html($hook_extra['plugin']));
+            // }
         }
-        return $response; // Must return the response
+        return $true; // Pass through the original value
     }
 
     /**
