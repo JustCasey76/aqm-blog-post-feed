@@ -18,6 +18,7 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
     private $github_api_url = 'https://api.github.com/repos/';
     private $access_token;
     private $plugin_activated;
+    private $plugin_slug;
 
     /**
      * Class constructor.
@@ -32,6 +33,8 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
         $this->username = $github_username;
         $this->repository = $github_repository;
         $this->access_token = $access_token;
+        $this->slug = plugin_basename($plugin_file);
+        $this->plugin_slug = dirname($this->slug);
 
         add_filter('pre_set_site_transient_update_plugins', array($this, 'check_for_update'));
         add_filter('plugins_api', array($this, 'plugin_api_call'), 10, 3);
@@ -58,7 +61,6 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
         }
         
         $this->plugin_data = get_plugin_data($this->plugin_file);
-        $this->slug = plugin_basename($this->plugin_file);
     }
 
     /**
@@ -261,7 +263,7 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
                 error_log('AQM GHU Debug: Our plugin (' . $this->slug . ') was updated.');
 
                 // Check if the plugin directory exists RIGHT NOW
-                $plugin_dir = WP_PLUGIN_DIR . '/' . dirname($this->slug);
+                $plugin_dir = WP_PLUGIN_DIR . '/' . $this->plugin_slug;
                 if (is_dir($plugin_dir)) {
                     error_log('AQM GHU Debug: Plugin directory EXISTS at: ' . $plugin_dir);
                 } else {
@@ -305,6 +307,26 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
     public function rename_github_zip_directory( $source, $remote_source, $upgrader, $hook_extra = null ) {
         global $wp_filesystem;
 
+        // Detailed Logging Start
+        error_log('[AQM BPF Updater DEBUG] --- upgrader_source_selection ---');
+        error_log('[AQM BPF Updater DEBUG] Input source: ' . print_r($source, true));
+        error_log('[AQM BPF Updater DEBUG] Remote source: ' . print_r($remote_source, true));
+        error_log('[AQM BPF Updater DEBUG] Hook Extra: ' . print_r($hook_extra, true));
+        // error_log('[AQM BPF Updater DEBUG] Upgrader Skin Plugin Info: ' . print_r(isset($upgrader->skin->plugin_info) ? $upgrader->skin->plugin_info : 'N/A', true)); // Can be verbose
+        error_log('[AQM BPF Updater DEBUG] Target Plugin Slug (dir): ' . $this->plugin_slug);
+        error_log('[AQM BPF Updater DEBUG] Target Plugin Basename: ' . $this->slug);
+
+        // Check if $wp_filesystem is initialized
+        if ( ! $wp_filesystem instanceof WP_Filesystem_Base ) {
+            error_log('[AQM BPF Updater ERROR] WP_Filesystem not initialized!');
+            // Attempt to initialize it (though it should be initialized by WP core during updates)
+            WP_Filesystem();
+            if ( ! $wp_filesystem instanceof WP_Filesystem_Base ) {
+                return new WP_Error('filesystem_error', 'WP_Filesystem could not be initialized.');
+            }
+            error_log('[AQM BPF Updater DEBUG] WP_Filesystem initialized manually.');
+        }
+
         // Check if this is our plugin being updated.
         // $hook_extra might be null for core updates, so check its existence.
         $is_our_plugin = false;
@@ -315,22 +337,27 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
             $is_our_plugin = true;
         }
 
+        error_log('[AQM BPF Updater DEBUG] Identifying as our plugin: ' . ($is_our_plugin ? 'Yes' : 'No'));
+
         // If it's not our plugin, return the original source
         if ( ! $is_our_plugin ) {
+            error_log('[AQM BPF Updater DEBUG] Not our plugin, returning original source.');
             return $source;
         }
 
         error_log('[AQM BPF Updater] upgrader_source_selection triggered for our plugin.');
-        error_log('[AQM BPF Updater] Original source path: ' . $source);
+        error_log('[AQM BPF Updater DEBUG] Original source path: ' . $source);
 
         // Check if the source path is valid
         if ( ! $wp_filesystem->exists( $source ) ) {
             error_log('[AQM BPF Updater] Source path does not exist: ' . $source);
             return new WP_Error('aqm_source_not_found', 'Plugin update source directory not found.', $source);
         }
+        error_log('[AQM BPF Updater DEBUG] Source path exists: ' . $source);
 
         // List files in the source directory
         $source_files = $wp_filesystem->dirlist( $source );
+        error_log('[AQM BPF Updater DEBUG] dirlist result for source (' . $source . '): ' . print_r($source_files, true));
 
         // Check if it contains a single directory (the problematic GitHub format)
         if ( is_array( $source_files ) && count( $source_files ) === 1 && reset( $source_files )['type'] === 'd' ) {
@@ -338,18 +365,22 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
             $extracted_path = trailingslashit( $source ) . $subdir_name;
 
             // Construct the expected path (parent of the $source, with the correct plugin slug)
-            $corrected_path = trailingslashit( dirname( $source ) ) . $this->slug; // e.g., /path/to/wp-content/upgrade/aqm-blog-post-feed
+            $corrected_path = trailingslashit( dirname( $source ) ) . $this->plugin_slug; // e.g., /path/to/wp-content/upgrade/aqm-blog-post-feed
 
             error_log('[AQM BPF Updater] Found single subdirectory: ' . esc_html($subdir_name));
-            error_log('[AQM BPF Updater] Moving from: ' . esc_html($extracted_path));
-            error_log('[AQM BPF Updater] Moving to: ' . esc_html($corrected_path));
+            error_log('[AQM BPF Updater] Extracted (source) path for move: ' . esc_html($extracted_path));
+            error_log('[AQM BPF Updater] Target (corrected) path for move: ' . esc_html($corrected_path));
 
             // Attempt to move the contents
-            if ( $wp_filesystem->move( $extracted_path, $corrected_path, true ) ) {
+            $move_result = $wp_filesystem->move( $extracted_path, $corrected_path, true );
+            error_log('[AQM BPF Updater DEBUG] Filesystem move result: ' . print_r($move_result, true));
+
+            if ( $move_result ) {
                  error_log('[AQM BPF Updater] Successfully moved contents to corrected path.');
                  // Clean up the now-empty $source directory
-                 $wp_filesystem->delete($source, true);
-                 error_log('[AQM BPF Updater] Deleted original source directory: ' . $source);
+                 $delete_result = $wp_filesystem->delete($source, true);
+                 error_log('[AQM BPF Updater DEBUG] Deleted original source directory (' . $source . ') result: ' . print_r($delete_result, true));
+                 error_log('[AQM BPF Updater DEBUG] Returning corrected path: ' . $corrected_path);
                  return $corrected_path; // Return the new, corrected path
             } else {
                  error_log('[AQM BPF Updater] Error moving directory contents.');
@@ -360,19 +391,27 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
              // If it doesn't look like the GitHub structure, assume it's correct or from a different source.
              // We might need to rename the $source directory itself if it's not the correct slug.
              $source_dir_name = basename($source);
-             if ($source_dir_name !== $this->slug) {
-                 $corrected_path = trailingslashit( dirname( $source ) ) . $this->slug;
-                 error_log('[AQM BPF Updater] Source directory name (' . esc_html($source_dir_name) . ') is not the plugin slug (' . esc_html($this->slug) . '). Attempting rename.');
-                 if ($wp_filesystem->move($source, $corrected_path, true)) {
+             error_log('[AQM BPF Updater DEBUG] Checking if source basename (' . esc_html($source_dir_name) . ') needs renaming to (' . esc_html($this->plugin_slug) . ').');
+             if ($source_dir_name !== $this->plugin_slug) {
+                 $corrected_path = trailingslashit( dirname( $source ) ) . $this->plugin_slug;
+                 error_log('[AQM BPF Updater] Source directory name (' . esc_html($source_dir_name) . ') is not the plugin slug (' . esc_html($this->plugin_slug) . '). Attempting rename of source itself.');
+                 error_log('[AQM BPF Updater DEBUG] Renaming source from: ' . $source . ' to: ' . $corrected_path);
+                 $rename_result = $wp_filesystem->move($source, $corrected_path, true);
+                 error_log('[AQM BPF Updater DEBUG] Filesystem rename result: ' . print_r($rename_result, true));
+                 if ($rename_result) {
                      error_log('[AQM BPF Updater] Successfully renamed source directory.');
+                     error_log('[AQM BPF Updater DEBUG] Returning renamed path: ' . $corrected_path);
                      return $corrected_path;
                  } else {
                      error_log('[AQM BPF Updater] Failed to rename source directory.');
                      // Proceed with original source, maybe it will work?
                  }
+             } else {
+                 error_log('[AQM BPF Updater DEBUG] Source basename already matches plugin slug. No rename needed.');
              }
         }
 
+        error_log('[AQM BPF Updater DEBUG] Returning original source path: ' . $source);
         return $source; // Return original source if no correction was needed or rename failed
     }
 
