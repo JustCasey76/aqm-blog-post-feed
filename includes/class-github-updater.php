@@ -42,6 +42,9 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
         // Add a hook to handle plugin activation persistence AFTER install (may or may not be needed with transient method)
         add_action('upgrader_process_complete', array($this, 'handle_activation_persistence'), 10, 2);
         
+        // Hook into the filter that corrects the download directory name
+        add_filter( 'upgrader_source_selection', array( $this, 'rename_github_zip_directory' ), 10, 4 );
+        
         // Get plugin data
         $this->get_plugin_data();
     }
@@ -287,4 +290,90 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
         }
          error_log('AQM GHU Debug: handle_activation_persistence END');
     }
+
+    /**
+     * Correct the directory name after extracting the GitHub ZIP file.
+     * WordPress expects the directory to be named 'aqm-blog-post-feed',
+     * but GitHub ZIPs often create 'repo-name-tag'.
+     *
+     * @param string      $source        Path to the extracted directory.
+     * @param string      $remote_source Path to the remote source (usually the same as $source).
+     * @param WP_Upgrader $upgrader      The WP_Upgrader instance.
+     * @param array       $hook_extra    Extra arguments passed, contains 'plugin' if updating a plugin.
+     * @return string|WP_Error Path to the corrected source directory or WP_Error on failure.
+     */
+    public function rename_github_zip_directory( $source, $remote_source, $upgrader, $hook_extra = null ) {
+        global $wp_filesystem;
+
+        // Check if this is our plugin being updated.
+        // $hook_extra might be null for core updates, so check its existence.
+        $is_our_plugin = false;
+        if ( ! empty( $hook_extra['plugin'] ) && $hook_extra['plugin'] === $this->slug ) {
+            $is_our_plugin = true;
+        } elseif ( ! empty( $upgrader->skin->plugin_info['Name'] ) && $upgrader->skin->plugin_info['Name'] === $this->plugin_data['Name'] ) {
+            // Fallback check using plugin name from the upgrader skin if hook_extra isn't reliable
+            $is_our_plugin = true;
+        }
+
+        // If it's not our plugin, return the original source
+        if ( ! $is_our_plugin ) {
+            return $source;
+        }
+
+        error_log('[AQM BPF Updater] upgrader_source_selection triggered for our plugin.');
+        error_log('[AQM BPF Updater] Original source path: ' . $source);
+
+        // Check if the source path is valid
+        if ( ! $wp_filesystem->exists( $source ) ) {
+            error_log('[AQM BPF Updater] Source path does not exist: ' . $source);
+            return new WP_Error('aqm_source_not_found', 'Plugin update source directory not found.', $source);
+        }
+
+        // List files in the source directory
+        $source_files = $wp_filesystem->dirlist( $source );
+
+        // Check if it contains a single directory (the problematic GitHub format)
+        if ( is_array( $source_files ) && count( $source_files ) === 1 && reset( $source_files )['type'] === 'd' ) {
+            $subdir_name = key( $source_files );
+            $extracted_path = trailingslashit( $source ) . $subdir_name;
+
+            // Construct the expected path (parent of the $source, with the correct plugin slug)
+            $corrected_path = trailingslashit( dirname( $source ) ) . $this->slug; // e.g., /path/to/wp-content/upgrade/aqm-blog-post-feed
+
+            error_log('[AQM BPF Updater] Found single subdirectory: ' . esc_html($subdir_name));
+            error_log('[AQM BPF Updater] Moving from: ' . esc_html($extracted_path));
+            error_log('[AQM BPF Updater] Moving to: ' . esc_html($corrected_path));
+
+            // Attempt to move the contents
+            if ( $wp_filesystem->move( $extracted_path, $corrected_path, true ) ) {
+                 error_log('[AQM BPF Updater] Successfully moved contents to corrected path.');
+                 // Clean up the now-empty $source directory
+                 $wp_filesystem->delete($source, true);
+                 error_log('[AQM BPF Updater] Deleted original source directory: ' . $source);
+                 return $corrected_path; // Return the new, corrected path
+            } else {
+                 error_log('[AQM BPF Updater] Error moving directory contents.');
+                 return new WP_Error('aqm_move_failed', 'Could not move plugin files to the correct directory name.', $corrected_path);
+            }
+        } else {
+             error_log('[AQM BPF Updater] Source directory does not contain a single subdirectory. Assuming structure is correct or update is not from GitHub ZIP.');
+             // If it doesn't look like the GitHub structure, assume it's correct or from a different source.
+             // We might need to rename the $source directory itself if it's not the correct slug.
+             $source_dir_name = basename($source);
+             if ($source_dir_name !== $this->slug) {
+                 $corrected_path = trailingslashit( dirname( $source ) ) . $this->slug;
+                 error_log('[AQM BPF Updater] Source directory name (' . esc_html($source_dir_name) . ') is not the plugin slug (' . esc_html($this->slug) . '). Attempting rename.');
+                 if ($wp_filesystem->move($source, $corrected_path, true)) {
+                     error_log('[AQM BPF Updater] Successfully renamed source directory.');
+                     return $corrected_path;
+                 } else {
+                     error_log('[AQM BPF Updater] Failed to rename source directory.');
+                     // Proceed with original source, maybe it will work?
+                 }
+             }
+        }
+
+        return $source; // Return original source if no correction was needed or rename failed
+    }
+
 }
