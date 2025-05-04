@@ -324,3 +324,16 @@ function aqm_load_more_posts_handler() {
 }
 add_action('wp_ajax_aqm_load_more_posts', 'aqm_load_more_posts_handler');
 add_action('wp_ajax_nopriv_aqm_load_more_posts', 'aqm_load_more_posts_handler');
+
+/**
+ * Add custom action links to the plugin entry on the plugins page.
+ *
+ * @param array  $links An array of plugin action links.
+ * @return array An array of plugin action links.
+ */
+function aqm_blog_post_feed_add_action_links( $links ) {
+    $check_updates_link = '<a href="' . esc_url( admin_url( 'update-core.php?force-check=1' ) ) . '">' . esc_html__( 'Check for Updates', 'aqm-blog-post-feed' ) . '</a>';
+    // Add the link before other links
+    return array_merge( array( 'check_updates' => $check_updates_link ), $links );
+}
+add_filter( 'plugin_action_links_' . AQM_BLOG_POST_FEED_BASENAME, 'aqm_blog_post_feed_add_action_links' );
