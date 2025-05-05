@@ -68,8 +68,11 @@ class AQM_Blog_Post_Feed_PUC_Updater {
         $this->log('GitHub username: ' . $github_username);
         $this->log('GitHub repository: ' . $github_repository);
 
+        // Make sure the Plugin Update Checker library is available
+        $this->ensure_puc_available();
+
         // Include the library
-        require_once dirname(__FILE__) . '/plugin-update-checker/plugin-update-checker/plugin-update-checker.php';
+        require_once dirname(__FILE__) . '/plugin-update-checker/plugin-update-checker.php';
 
         // Set up the update checker
         $this->update_checker = Puc_v4_Factory::buildUpdateChecker(
@@ -110,6 +113,113 @@ class AQM_Blog_Post_Feed_PUC_Updater {
         error_log('[AQM BPF PUC UPDATER] PLUGIN FILE: ' . basename($plugin_file));
         error_log('[AQM BPF PUC UPDATER] GITHUB REPO: ' . $github_username . '/' . $github_repository);
         error_log('=========================================================');
+    }
+    
+    /**
+     * Ensure the Plugin Update Checker library is available.
+     * If not, download it from GitHub.
+     */
+    private function ensure_puc_available() {
+        // Define the paths
+        $puc_dir = dirname(__FILE__) . '/plugin-update-checker';
+        $puc_file = $puc_dir . '/plugin-update-checker.php';
+        
+        // Check if the library is already available
+        if (file_exists($puc_file)) {
+            $this->log('Plugin Update Checker library already exists');
+            return;
+        }
+        
+        // Create the directory if it doesn't exist
+        if (!file_exists($puc_dir)) {
+            $this->log('Creating Plugin Update Checker directory');
+            mkdir($puc_dir, 0755, true);
+        }
+        
+        // Download the library from GitHub
+        $this->log('Downloading Plugin Update Checker library from GitHub');
+        
+        // Define the GitHub repository and ZIP URL
+        $zip_url = 'https://github.com/YahnisElsts/plugin-update-checker/archive/refs/heads/master.zip';
+        $zip_file = $puc_dir . '/puc.zip';
+        
+        // Download the ZIP file
+        $response = wp_remote_get($zip_url, array(
+            'timeout' => 30,
+            'stream' => true,
+            'filename' => $zip_file
+        ));
+        
+        if (is_wp_error($response)) {
+            $this->log('Error downloading Plugin Update Checker: ' . $response->get_error_message(), 'error');
+            return;
+        }
+        
+        // Extract the ZIP file
+        $this->log('Extracting Plugin Update Checker library');
+        
+        // Use WordPress's unzip_file function
+        WP_Filesystem();
+        global $wp_filesystem;
+        
+        $unzipped = unzip_file($zip_file, $puc_dir);
+        
+        if (is_wp_error($unzipped)) {
+            $this->log('Error extracting Plugin Update Checker: ' . $unzipped->get_error_message(), 'error');
+            return;
+        }
+        
+        // Move the files from the extracted directory to the plugin-update-checker directory
+        $extracted_dir = $puc_dir . '/plugin-update-checker-master';
+        
+        if (file_exists($extracted_dir)) {
+            // Copy the plugin-update-checker.php file
+            copy($extracted_dir . '/plugin-update-checker.php', $puc_file);
+            
+            // Copy the Puc directory
+            $this->copy_directory($extracted_dir . '/Puc', $puc_dir . '/Puc');
+            
+            // Clean up
+            $wp_filesystem->delete($extracted_dir, true);
+            $wp_filesystem->delete($zip_file);
+            
+            $this->log('Plugin Update Checker library installed successfully');
+        } else {
+            $this->log('Error: Extracted directory not found', 'error');
+        }
+    }
+    
+    /**
+     * Copy a directory recursively.
+     *
+     * @param string $source Source directory.
+     * @param string $destination Destination directory.
+     * @return bool True on success, false on failure.
+     */
+    private function copy_directory($source, $destination) {
+        if (!is_dir($destination)) {
+            mkdir($destination, 0755, true);
+        }
+        
+        $dir = opendir($source);
+        $result = true;
+        
+        while (false !== ($file = readdir($dir))) {
+            if (($file != '.') && ($file != '..')) {
+                if (is_dir($source . '/' . $file)) {
+                    $result = $this->copy_directory($source . '/' . $file, $destination . '/' . $file);
+                } else {
+                    $result = copy($source . '/' . $file, $destination . '/' . $file);
+                }
+                
+                if (!$result) {
+                    break;
+                }
+            }
+        }
+        
+        closedir($dir);
+        return $result;
     }
 
     /**
