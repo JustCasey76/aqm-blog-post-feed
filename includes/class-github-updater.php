@@ -9,7 +9,7 @@
 if (!defined('ABSPATH')) exit;
 
 class AQM_Blog_Post_Feed_GitHub_Updater {
-    // Debug mode - set to true to enable verbose logging
+    // Debug mode - ALWAYS ENABLED for v1.0.15
     private $debug = true;
     private $slug;
     private $plugin_data;
@@ -31,6 +31,13 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
      * @param string $access_token Optional GitHub access token for private repositories
      */
     public function __construct($plugin_file, $github_username, $github_repository, $access_token = '') {
+        // Add extremely clear startup message
+        error_log('=========================================================');
+        error_log('[AQM BPF v1.0.15] GITHUB UPDATER INITIALIZED');
+        error_log('[AQM BPF v1.0.15] Using plugin file: ' . $plugin_file);
+        error_log('[AQM BPF v1.0.15] GitHub repo: ' . $github_username . '/' . $github_repository);
+        error_log('=========================================================');
+        
         $this->log('Constructor initiated.');
 
         $this->plugin_file = $plugin_file;
@@ -172,16 +179,17 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
                 $plugin_info->new_version = $version;
                 $plugin_info->url = $this->plugin_data['PluginURI'];
                 
-                // IMPORTANT: We MUST use GitHub's ZIP URL directly
-                // This is version 1.0.14 of the updater code
+                // CRITICAL FIX: FORCE USE OF GITHUB ZIP URL (v1.0.15)
+                // Get the direct GitHub ZIP URL for this release
                 $download_link = $repo_info->zipball_url;
                 
-                // Log with a very distinct message we can identify in the logs
-                error_log('[AQM BPF FIXED v1.0.14] Using GITHUB ZIP URL: ' . $download_link);
+                // Add extremely clear logging
+                error_log('=========================================================');
+                error_log('[AQM BPF v1.0.15] USING GITHUB ZIPBALL URL DIRECTLY');
+                error_log('[AQM BPF v1.0.15] ZIP URL: ' . $download_link);
+                error_log('=========================================================');
                 
-                // Also log through our logging system
-                $this->log('Using GitHub ZIP URL (v1.0.14): ' . $download_link);
-                
+                // Set the package URL to GitHub's ZIP URL
                 $plugin_info->package = $download_link;
                 
                 // Include in the update array
@@ -235,12 +243,15 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
             $plugin_info->sections['changelog'] = 'View changes on GitHub: ' . $repo_info->html_url;
         }
         
-        // IMPORTANT: We MUST use GitHub's ZIP URL directly
-        // This is version 1.0.14 of the updater code
+        // CRITICAL FIX: FORCE USE OF GITHUB ZIP URL (v1.0.15)
+        // Get the direct GitHub ZIP URL for this release
         $download_link = $repo_info->zipball_url;
         
-        // Log with a very distinct message we can identify in the logs
-        error_log('[AQM BPF FIXED v1.0.14] API call using GITHUB ZIP URL: ' . $download_link);
+        // Add extremely clear logging
+        error_log('=========================================================');
+        error_log('[AQM BPF v1.0.15] API CALL USING GITHUB ZIPBALL URL DIRECTLY');
+        error_log('[AQM BPF v1.0.15] API ZIP URL: ' . $download_link);
+        error_log('=========================================================');
         
         $plugin_info->download_link = $download_link;
         
