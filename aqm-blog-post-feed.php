@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 1.0.29
+Version: 1.0.30
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 GitHub Plugin URI: https://github.com/JustCasey76/aqm-blog-post-feed
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Version for cache busting
-define('AQM_BLOG_POST_FEED_VERSION', '1.0.29');
+define('AQM_BLOG_POST_FEED_VERSION', '1.0.30');
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
@@ -107,6 +107,31 @@ function aqm_blog_post_feed_show_update_success() {
     }
 }
 add_action('admin_notices', 'aqm_blog_post_feed_show_update_success');
+
+/**
+ * Handle the AJAX request to check for plugin updates.
+ */
+function aqm_blog_post_feed_handle_check_updates_ajax() {
+    // Verify nonce
+    check_ajax_referer('aqm-blog-post-feed-check-updates', 'nonce');
+    
+    // Clear update transients to force a fresh check
+    delete_transient('aqmbpf_github_data_' . md5('JustCasey76' . 'aqm-blog-post-feed'));
+    delete_site_transient('update_plugins');
+    
+    // Force WordPress to check for updates
+    wp_clean_plugins_cache(true);
+    
+    // Log the manual update check
+    error_log('[AQM BLOG POST FEED] Manual update check triggered');
+    
+    // Update the last check time
+    update_option('aqm_blog_post_feed_last_update_check', time());
+    
+    // Send success response
+    wp_send_json_success(array('message' => 'Update check completed successfully.'));
+}
+add_action('wp_ajax_aqm_blog_post_feed_check_updates', 'aqm_blog_post_feed_handle_check_updates_ajax');
 
 /**
  * Attempts to reactivate the plugin after an update is complete.
