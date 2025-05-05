@@ -149,8 +149,8 @@ class AQMBPF_Updater {
             return $cache;
         }
 
-        // Build API URL
-        $api_url = "https://api.github.com/repos/{$this->username}/{$this->repository}/releases/latest";
+        // Build API URL - using tags instead of releases
+        $api_url = "https://api.github.com/repos/{$this->username}/{$this->repository}/tags";
         
         // Add access token if provided
         if (!empty($this->access_token)) {
@@ -179,12 +179,30 @@ class AQMBPF_Updater {
             return false;
         }
 
-        // Decode response
-        $data = json_decode(wp_remote_retrieve_body($response));
-
+        // Decode response - tags endpoint returns an array
+        $tags = json_decode(wp_remote_retrieve_body($response));
+        
+        // Check if we have any tags
+        if (empty($tags) || !is_array($tags)) {
+            error_log('[AQMBPF UPDATER] No tags found or invalid response');
+            return false;
+        }
+        
+        // Get the first tag (most recent)
+        $latest_tag = $tags[0];
+        
+        // Create a response object similar to the releases endpoint
+        $data = new stdClass();
+        $data->tag_name = $latest_tag->name;
+        $data->html_url = "https://github.com/{$this->username}/{$this->repository}/releases/tag/{$latest_tag->name}";
+        $data->zipball_url = "https://github.com/{$this->username}/{$this->repository}/archive/refs/tags/{$latest_tag->name}.zip";
+        
+        // Log the latest tag found
+        error_log('[AQMBPF UPDATER] Latest tag found: ' . $latest_tag->name);
+        
         // Cache for 6 hours
         set_transient($cache_key, $data, 6 * HOUR_IN_SECONDS);
-
+        
         return $data;
     }
 
