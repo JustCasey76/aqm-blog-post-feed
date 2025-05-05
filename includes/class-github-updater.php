@@ -172,14 +172,15 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
                 $plugin_info->new_version = $version;
                 $plugin_info->url = $this->plugin_data['PluginURI'];
                 
-                // Use GitHub's ZIP URL since we don't have a clean ZIP hosted elsewhere
+                // IMPORTANT: We MUST use GitHub's ZIP URL directly
+                // This is version 1.0.14 of the updater code
                 $download_link = $repo_info->zipball_url;
                 
-                // Note: We don't add the access token to the URL anymore
-                // GitHub API tokens should be passed via Authorization header during the actual request
-                // WordPress handles this internally when downloading the package
+                // Log with a very distinct message we can identify in the logs
+                error_log('[AQM BPF FIXED v1.0.14] Using GITHUB ZIP URL: ' . $download_link);
                 
-                $this->log('Using GitHub ZIP URL: ' . $download_link);
+                // Also log through our logging system
+                $this->log('Using GitHub ZIP URL (v1.0.14): ' . $download_link);
                 
                 $plugin_info->package = $download_link;
                 
@@ -234,12 +235,12 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
             $plugin_info->sections['changelog'] = 'View changes on GitHub: ' . $repo_info->html_url;
         }
         
-        // Download link - use zipball_url from GitHub API
+        // IMPORTANT: We MUST use GitHub's ZIP URL directly
+        // This is version 1.0.14 of the updater code
         $download_link = $repo_info->zipball_url;
         
-        // Note: We don't add the access token to the URL anymore
-        // GitHub API tokens should be passed via Authorization header during the actual request
-        // WordPress handles this internally when downloading the package
+        // Log with a very distinct message we can identify in the logs
+        error_log('[AQM BPF FIXED v1.0.14] API call using GITHUB ZIP URL: ' . $download_link);
         
         $plugin_info->download_link = $download_link;
         
