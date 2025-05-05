@@ -3,6 +3,7 @@
  * Plugin Update Checker Implementation
  * 
  * Uses the YahnisElsts/plugin-update-checker library to handle updates from GitHub.
+ * All function names have been prefixed with 'aqmbpf_' to avoid conflicts with other plugins.
  */
 
 // Don't allow direct access to this file
@@ -13,7 +14,7 @@ if (!defined('ABSPATH')) {
 /**
  * Initialize the Plugin Update Checker
  */
-function aqm_blog_post_feed_init_update_checker() {
+function aqmbpf_init_update_checker() {
     // Make sure we have the plugin-update-checker library
     if (!file_exists(plugin_dir_path(__FILE__) . 'plugin-update-checker/plugin-update-checker.php')) {
         error_log('[AQM BPF] Plugin Update Checker library not found');
@@ -42,9 +43,9 @@ function aqm_blog_post_feed_init_update_checker() {
     $update_checker->setDebugMode(true);
 
     // Add hooks for plugin activation persistence
-    add_filter('upgrader_pre_install', 'aqm_blog_post_feed_pre_install', 10, 2);
-    add_action('upgrader_process_complete', 'aqm_blog_post_feed_post_install', 10, 2);
-    add_action('admin_init', 'aqm_blog_post_feed_maybe_reactivate');
+    add_filter('upgrader_pre_install', 'aqmbpf_pre_install', 10, 2);
+    add_action('upgrader_process_complete', 'aqmbpf_post_install', 10, 2);
+    add_action('admin_init', 'aqmbpf_maybe_reactivate');
 
     error_log('[AQM BPF] Plugin Update Checker initialized successfully');
 }
@@ -56,7 +57,7 @@ function aqm_blog_post_feed_init_update_checker() {
  * @param array $hook_extra Extra data about the plugin being updated
  * @return bool Whether to proceed with installation
  */
-function aqm_blog_post_feed_pre_install($return, $hook_extra) {
+function aqmbpf_pre_install($return, $hook_extra) {
     error_log('=========================================================');
     error_log('[AQM BPF] ENTERING pre_install hook');
     error_log('=========================================================');
@@ -69,7 +70,7 @@ function aqm_blog_post_feed_pre_install($return, $hook_extra) {
     // Check if the plugin is active
     if (is_plugin_active(plugin_basename(AQM_BLOG_POST_FEED_FILE))) {
         // Set a transient to reactivate the plugin after update
-        set_transient('aqm_blog_post_feed_was_active', true, 5 * MINUTE_IN_SECONDS);
+        set_transient('aqmbpf_was_active', true, 5 * MINUTE_IN_SECONDS);
         error_log('[AQM BPF] Plugin was active, setting transient');
     }
     
@@ -82,7 +83,7 @@ function aqm_blog_post_feed_pre_install($return, $hook_extra) {
  * @param WP_Upgrader $upgrader_object WP_Upgrader instance
  * @param array $options Array of bulk item update data
  */
-function aqm_blog_post_feed_post_install($upgrader_object, $options) {
+function aqmbpf_post_install($upgrader_object, $options) {
     error_log('=========================================================');
     error_log('[AQM BPF] ENTERING post_install hook');
     error_log('=========================================================');
@@ -99,14 +100,14 @@ function aqm_blog_post_feed_post_install($upgrader_object, $options) {
     
     // Set a transient to reactivate on next admin page load
     // This is a fallback in case the plugin can't be activated immediately
-    set_transient('aqm_blog_post_feed_reactivate', true, 5 * MINUTE_IN_SECONDS);
+    set_transient('aqmbpf_reactivate', true, 5 * MINUTE_IN_SECONDS);
     
     error_log('[AQM BPF] Update complete, setting reactivation transient');
     
     // Try to reactivate the plugin now
-    if (get_transient('aqm_blog_post_feed_was_active')) {
+    if (get_transient('aqmbpf_was_active')) {
         // Delete the transient
-        delete_transient('aqm_blog_post_feed_was_active');
+        delete_transient('aqmbpf_was_active');
         
         // Make sure plugin functions are loaded
         if (!function_exists('activate_plugin')) {
@@ -122,7 +123,7 @@ function aqm_blog_post_feed_post_install($upgrader_object, $options) {
             error_log('[AQM BPF] Plugin successfully reactivated');
             
             // Clear the reactivation transient since we successfully reactivated
-            delete_transient('aqm_blog_post_feed_reactivate');
+            delete_transient('aqmbpf_reactivate');
         }
         
         // Clear plugin cache
@@ -133,15 +134,15 @@ function aqm_blog_post_feed_post_install($upgrader_object, $options) {
 /**
  * Check if we need to reactivate the plugin on admin page load
  */
-function aqm_blog_post_feed_maybe_reactivate() {
+function aqmbpf_maybe_reactivate() {
     error_log('=========================================================');
     error_log('[AQM BPF] ENTERING maybe_reactivate function');
     error_log('=========================================================');
 
     // Check if the reactivation transient exists
-    if (get_transient('aqm_blog_post_feed_reactivate')) {
+    if (get_transient('aqmbpf_reactivate')) {
         // Delete the transient
-        delete_transient('aqm_blog_post_feed_reactivate');
+        delete_transient('aqmbpf_reactivate');
         
         error_log('[AQM BPF] Attempting reactivation on admin page load');
         
