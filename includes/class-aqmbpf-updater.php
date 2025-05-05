@@ -110,8 +110,16 @@ class AQMBPF_Updater {
         // Get update data from GitHub
         $update_data = $this->get_github_update_data();
 
+        // Add debug logging
+        error_log('[AQMBPF UPDATER] Checking for updates. Current version: ' . $this->plugin_data['Version']);
+        error_log('[AQMBPF UPDATER] Latest tag from GitHub: ' . ($update_data ? $update_data->tag_name : 'No data'));
+        
+        // Clean the tag name by removing the 'v' prefix if it exists
+        $latest_version = $update_data ? ltrim($update_data->tag_name, 'v') : '';
+        error_log('[AQMBPF UPDATER] Cleaned tag name for comparison: ' . $latest_version);
+        
         // If update data is available and version is newer, add to transient
-        if ($update_data && version_compare($this->plugin_data['Version'], $update_data->tag_name, '<')) {
+        if ($update_data && version_compare($this->plugin_data['Version'], $latest_version, '<')) {
             error_log('[AQMBPF UPDATER] New version available: ' . $update_data->tag_name);
 
             // Create the plugin info object
