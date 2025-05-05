@@ -1,6 +1,6 @@
 # AQM Blog Post Feed Changelog
 
-## 3.0.1 - May 5, 2025
+## 1.0.27 - May 5, 2025
 - Removed redundant updater files:
   - Removed old GitHub updater files (`class-github-updater.php`, `class-github-updater-v2.php`)
   - Removed fixed GitHub updater file (`class-aqm-github-updater-fixed.php`)
@@ -9,7 +9,7 @@
   - Removed source zip file (`puc.zip`)
 - Improved code maintainability and reduced plugin size
 
-## 3.0.0 - Previous Release
+## 1.0.26 - Previous Release
 - Refactored plugin to improve maintainability and reliability
 - Separated CSS and JS into dedicated files (`css/`, `js/`)
 - Refactored the Divi module to use CSS classes and a helper method for post HTML generation
