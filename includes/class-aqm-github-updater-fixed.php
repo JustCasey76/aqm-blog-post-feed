@@ -350,82 +350,120 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
         error_log('[AQM BPF UPDATER FIXED] DIRECTORY RENAMING HOOK FIRED');
         error_log('[AQM BPF UPDATER FIXED] SOURCE: ' . $source);
         error_log('[AQM BPF UPDATER FIXED] REMOTE SOURCE: ' . $remote_source);
+        error_log('[AQM BPF UPDATER FIXED] HOOK EXTRA: ' . print_r($hook_extra, true));
         error_log('=========================================================');
         
-        // Check if we're dealing with a plugin update
-        if (!isset($hook_extra['plugin']) && isset($hook_extra['theme'])) {
-            error_log('[AQM BPF UPDATER FIXED] This is a theme update, not our plugin');
-            return $source; // This is a theme update, not our plugin
-        }
-        
-        // For plugin updates, check if it's our plugin
-        if (isset($hook_extra['plugin']) && $hook_extra['plugin'] !== $this->plugin_basename) {
-            error_log('[AQM BPF UPDATER FIXED] Not our plugin: ' . $hook_extra['plugin'] . ' vs ' . $this->plugin_basename);
-            return $source; // Not our plugin
-        }
-        
-        // For core updates or bulk updates where plugin isn't specified
-        if (!isset($hook_extra['plugin'])) {
-            // Try to detect if this is our plugin based on the source directory
-            $plugin_slug = dirname($this->plugin_basename);
-            $source_basename = basename($source);
-            
-            // Check if the source directory contains our repository name
-            if (strpos($source_basename, $this->github_repository) === false) {
-                error_log('[AQM BPF UPDATER FIXED] Likely not our plugin (bulk update)');
-                return $source; // Likely not our plugin
-            }
-            
-            error_log('[AQM BPF UPDATER FIXED] Detected potential plugin update during bulk update');
-        }
-        
-        // Get the expected plugin slug (folder name)
+        // ULTRA AGGRESSIVE APPROACH: Always try to fix GitHub-style directories
+        $source_basename = basename($source);
         $plugin_slug = dirname($this->plugin_basename);
+        
+        error_log('[AQM BPF UPDATER FIXED] Source basename: ' . $source_basename);
         error_log('[AQM BPF UPDATER FIXED] Plugin slug: ' . $plugin_slug);
         
-        // Check if the source directory already has the correct name
-        $source_basename = basename($source);
-        if ($source_basename === $plugin_slug) {
-            error_log('[AQM BPF UPDATER FIXED] Source directory already has the correct name');
-            return $source;
-        }
-        
-        // GitHub zipball typically creates a directory like 'username-repository-hash' or 'repository-tag'
-        // We need to rename it to match our plugin slug
-        $correct_directory = trailingslashit($remote_source) . $plugin_slug;
-        error_log('[AQM BPF UPDATER FIXED] Target directory: ' . $correct_directory);
-        
-        // If the target directory already exists, remove it first
-        if ($wp_filesystem->exists($correct_directory)) {
-            error_log('[AQM BPF UPDATER FIXED] Target directory exists, removing it');
-            $wp_filesystem->delete($correct_directory, true);
-        }
-        
-        // Check if source directory exists
-        if (!$wp_filesystem->exists($source)) {
-            error_log('[AQM BPF UPDATER FIXED] Source directory does not exist: ' . $source);
-            return $source;
-        }
-        
-        // Rename the directory
-        error_log('[AQM BPF UPDATER FIXED] Attempting to rename ' . $source . ' to ' . $correct_directory);
-        if ($wp_filesystem->move($source, $correct_directory)) {
-            error_log('[AQM BPF UPDATER FIXED] Directory renamed successfully');
-            return $correct_directory;
-        } else {
-            error_log('[AQM BPF UPDATER FIXED] Failed to rename directory');
+        // Check if this looks like a GitHub-style directory (username-repo-hash)
+        if (strpos($source_basename, $this->github_repository) !== false || 
+            strpos($source_basename, $this->github_username) !== false) {
+            
+            error_log('[AQM BPF UPDATER FIXED] Detected GitHub-style directory structure');
+            
+            // Create the correct directory name
+            $correct_directory = trailingslashit($remote_source) . $plugin_slug;
+            error_log('[AQM BPF UPDATER FIXED] Target directory: ' . $correct_directory);
+            
+            // If the target directory already exists, remove it first
+            if ($wp_filesystem->exists($correct_directory)) {
+                error_log('[AQM BPF UPDATER FIXED] Target directory exists, removing it');
+                $wp_filesystem->delete($correct_directory, true);
+            }
+            
+            // Check if source directory exists
+            if (!$wp_filesystem->exists($source)) {
+                error_log('[AQM BPF UPDATER FIXED] Source directory does not exist: ' . $source);
+                return $source;
+            }
+            
+            // SUPER AGGRESSIVE: Try multiple methods to rename the directory
+            
+            // Method 1: Use WP_Filesystem move
+            error_log('[AQM BPF UPDATER FIXED] Method 1: Attempting to rename using WP_Filesystem move');
+            if ($wp_filesystem->move($source, $correct_directory)) {
+                error_log('[AQM BPF UPDATER FIXED] Method 1: Directory renamed successfully');
+                return $correct_directory;
+            } else {
+                error_log('[AQM BPF UPDATER FIXED] Method 1: Failed to rename directory');
+            }
+            
+            // Method 2: Try to copy files instead of moving the directory
+            error_log('[AQM BPF UPDATER FIXED] Method 2: Attempting to copy files instead');
+            if (!$wp_filesystem->exists($correct_directory)) {
+                $wp_filesystem->mkdir($correct_directory);
+            }
+            
+            // Copy all files from source to correct directory
+            $files = $wp_filesystem->dirlist($source, true);
+            if (is_array($files)) {
+                $copy_success = true;
+                foreach ($files as $file => $file_info) {
+                    if ($file_info['type'] == 'd') {
+                        // It's a directory, copy recursively
+                        if (!$wp_filesystem->mkdir($correct_directory . '/' . $file)) {
+                            $copy_success = false;
+                            error_log('[AQM BPF UPDATER FIXED] Method 2: Failed to create directory: ' . $file);
+                            break;
+                        }
+                        
+                        // Copy contents recursively
+                        $subdir_files = $wp_filesystem->dirlist($source . '/' . $file, true);
+                        foreach ($subdir_files as $subfile => $subfile_info) {
+                            if ($subfile_info['type'] == 'f') {
+                                if (!$wp_filesystem->copy($source . '/' . $file . '/' . $subfile, $correct_directory . '/' . $file . '/' . $subfile)) {
+                                    $copy_success = false;
+                                    error_log('[AQM BPF UPDATER FIXED] Method 2: Failed to copy file: ' . $file . '/' . $subfile);
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        // It's a file, copy directly
+                        if (!$wp_filesystem->copy($source . '/' . $file, $correct_directory . '/' . $file)) {
+                            $copy_success = false;
+                            error_log('[AQM BPF UPDATER FIXED] Method 2: Failed to copy file: ' . $file);
+                            break;
+                        }
+                    }
+                }
+                
+                if ($copy_success) {
+                    error_log('[AQM BPF UPDATER FIXED] Method 2: Files copied successfully');
+                    // Delete the original source directory
+                    $wp_filesystem->delete($source, true);
+                    return $correct_directory;
+                } else {
+                    error_log('[AQM BPF UPDATER FIXED] Method 2: Failed to copy all files');
+                }
+            } else {
+                error_log('[AQM BPF UPDATER FIXED] Method 2: Failed to list files in source directory');
+            }
+            
+            // Method 3: Try PHP's native rename function as a last resort
+            error_log('[AQM BPF UPDATER FIXED] Method 3: Attempting to use PHP native rename');
+            if (@rename($source, $correct_directory)) {
+                error_log('[AQM BPF UPDATER FIXED] Method 3: Directory renamed successfully using PHP native rename');
+                return $correct_directory;
+            } else {
+                error_log('[AQM BPF UPDATER FIXED] Method 3: Failed to rename directory using PHP native rename');
+                error_log('[AQM BPF UPDATER FIXED] PHP Error: ' . error_get_last()['message']);
+            }
             
             // Log filesystem details for debugging
             error_log('[AQM BPF UPDATER FIXED] WP Filesystem method: ' . get_filesystem_method());
+            error_log('[AQM BPF UPDATER FIXED] Source writable: ' . ($wp_filesystem->is_writable($source) ? 'Yes' : 'No'));
+            error_log('[AQM BPF UPDATER FIXED] Remote source writable: ' . ($wp_filesystem->is_writable($remote_source) ? 'Yes' : 'No'));
             
-            // Try to determine why the move failed
-            if (!$wp_filesystem->is_writable($remote_source)) {
-                error_log('[AQM BPF UPDATER FIXED] Remote source directory is not writable');
-            }
-            
-            if ($wp_filesystem->exists($correct_directory)) {
-                error_log('[AQM BPF UPDATER FIXED] Target directory already exists after failed move');
-            }
+            // If all methods failed, return the original source as a fallback
+            error_log('[AQM BPF UPDATER FIXED] All renaming methods failed, returning original source');
+        } else {
+            error_log('[AQM BPF UPDATER FIXED] Not a GitHub-style directory, skipping rename');
         }
         
         return $source;
