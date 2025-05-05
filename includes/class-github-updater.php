@@ -48,7 +48,9 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
         add_action('upgrader_process_complete', array($this, 'handle_activation_persistence'), 10, 2);
         
         // Hook into the filter that corrects the download directory name
-        add_filter( 'upgrader_source_selection', array( $this, 'rename_github_zip_directory' ), 10, 4 );
+        // Use a higher priority (1) to ensure our function runs before others
+        add_filter( 'upgrader_source_selection', array( $this, 'rename_github_zip_directory' ), 1, 4 );
+        error_log('[AQM BPF Updater] Added upgrader_source_selection hook with priority 1.');
         
         // Get plugin data
         $this->get_plugin_data();
@@ -138,11 +140,15 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
                 $plugin_info->new_version = $version;
                 $plugin_info->url = $this->plugin_data['PluginURI'];
                 
-                // Use a clean ZIP URL instead of GitHub's auto-generated ZIP
-                // This follows the established process in Memory 039d1bc2
-                $download_link = $this->get_clean_zip_url($version);
+                // Use GitHub's ZIP URL since we don't have a clean ZIP hosted elsewhere
+                $download_link = $repo_info->zipball_url;
                 
-                error_log('[AQM BPF Updater] Using clean ZIP URL: ' . $download_link);
+                // Add access token if provided
+                if (!empty($this->access_token)) {
+                    $download_link = add_query_arg(array('access_token' => $this->access_token), $download_link);
+                }
+                
+                error_log('[AQM BPF Updater] Using GitHub ZIP URL: ' . $download_link);
                 
                 $plugin_info->package = $download_link;
                 
