@@ -160,24 +160,6 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
         return $transient;
     }
 
-    /**
-     * Get the URL for the clean ZIP file based on the version number.
-     * 
-     * @param string $version The version number without 'v' prefix
-     * @return string The URL to the clean ZIP file
-     */
-    private function get_clean_zip_url($version) {
-        // Base URL where clean ZIPs are hosted
-        $base_url = 'https://aqmarketing.com/plugin-updates/aqm-blog-post-feed/';
-        
-        // Construct the filename: aqm-blog-post-feed-{version}.zip
-        $filename = 'aqm-blog-post-feed-' . $version . '.zip';
-        
-        // Full URL to the clean ZIP
-        $clean_zip_url = $base_url . $filename;
-        
-        return $clean_zip_url;
-    }
     
     /**
      * Plugin API call to get plugin information.
