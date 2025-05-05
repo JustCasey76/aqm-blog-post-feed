@@ -9,6 +9,8 @@
 if (!defined('ABSPATH')) exit;
 
 class AQM_Blog_Post_Feed_GitHub_Updater {
+    // Debug mode - set to true to enable verbose logging
+    private $debug = true;
     private $slug;
     private $plugin_data;
     private $username;
@@ -29,7 +31,7 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
      * @param string $access_token Optional GitHub access token for private repositories
      */
     public function __construct($plugin_file, $github_username, $github_repository, $access_token = '') {
-        error_log('[AQM BPF Updater] Constructor initiated.'); // Add log to confirm loading
+        $this->log('Constructor initiated.');
 
         $this->plugin_file = $plugin_file;
         $this->username = $github_username;
@@ -50,12 +52,39 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
         // Hook into the filter that corrects the download directory name
         // Use a higher priority (1) to ensure our function runs before others
         add_filter( 'upgrader_source_selection', array( $this, 'rename_github_zip_directory' ), 1, 4 );
-        error_log('[AQM BPF Updater] Added upgrader_source_selection hook with priority 1.');
+        $this->log('Added upgrader_source_selection hook with priority 1.');
         
         // Get plugin data
         $this->get_plugin_data();
     }
 
+    /**
+     * Get plugin data.
+     */
+    /**
+     * Log a message if debug mode is enabled
+     *
+     * @param string $message The message to log
+     * @param string $level The log level (info, debug, error)
+     */
+    private function log($message, $level = 'info') {
+        if (!$this->debug && $level !== 'error') {
+            return;
+        }
+        
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            $prefix = '[AQM BPF Updater';  
+            if ($level === 'debug') {
+                $prefix .= ' DEBUG';  
+            } elseif ($level === 'error') {
+                $prefix .= ' ERROR';  
+            }
+            $prefix .= '] ';
+            
+            error_log($prefix . $message);
+        }
+    }
+    
     /**
      * Get plugin data.
      */
@@ -81,17 +110,20 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
         $endpoint = 'releases/latest';
         $url = $this->github_api_url . $this->username . '/' . $this->repository . '/' . $endpoint;
         
-        // Include access token if provided
+        // Prepare headers for GitHub API
+        $headers = array(
+            'Accept' => 'application/json',
+            'User-Agent' => 'WordPress/' . get_bloginfo('version') . '; ' . get_bloginfo('url')
+        );
+        
+        // Add authorization header if token is provided (preferred over URL parameter)
         if (!empty($this->access_token)) {
-            $url = add_query_arg(array('access_token' => $this->access_token), $url);
+            $headers['Authorization'] = 'token ' . $this->access_token;
         }
 
         // Get the response
         $response = wp_remote_get($url, array(
-            'headers' => array(
-                'Accept' => 'application/json',
-                'User-Agent' => 'WordPress/' . get_bloginfo('version') . '; ' . get_bloginfo('url')
-            )
+            'headers' => $headers
         ));
 
         // Handle errors
@@ -143,12 +175,11 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
                 // Use GitHub's ZIP URL since we don't have a clean ZIP hosted elsewhere
                 $download_link = $repo_info->zipball_url;
                 
-                // Add access token if provided
-                if (!empty($this->access_token)) {
-                    $download_link = add_query_arg(array('access_token' => $this->access_token), $download_link);
-                }
+                // Note: We don't add the access token to the URL anymore
+                // GitHub API tokens should be passed via Authorization header during the actual request
+                // WordPress handles this internally when downloading the package
                 
-                error_log('[AQM BPF Updater] Using GitHub ZIP URL: ' . $download_link);
+                $this->log('Using GitHub ZIP URL: ' . $download_link);
                 
                 $plugin_info->package = $download_link;
                 
@@ -203,13 +234,12 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
             $plugin_info->sections['changelog'] = 'View changes on GitHub: ' . $repo_info->html_url;
         }
         
-        // Download link
+        // Download link - use zipball_url from GitHub API
         $download_link = $repo_info->zipball_url;
         
-        // Add access token if provided
-        if (!empty($this->access_token)) {
-            $download_link = add_query_arg(array('access_token' => $this->access_token), $download_link);
-        }
+        // Note: We don't add the access token to the URL anymore
+        // GitHub API tokens should be passed via Authorization header during the actual request
+        // WordPress handles this internally when downloading the package
         
         $plugin_info->download_link = $download_link;
         
@@ -227,15 +257,19 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
     public function set_reactivation_transient( $true, $hook_extra ) {
         // Check if this hook is for our plugin
         if ( is_array( $hook_extra ) && isset( $hook_extra['plugin'] ) && $hook_extra['plugin'] === $this->slug ) {
-            error_log('[AQM BPF Updater] upgrader_pre_install hook fired for plugin: ' . esc_html($hook_extra['plugin']) . ' (Our slug: ' . esc_html($this->slug) . ')');
+            $this->log('upgrader_pre_install hook fired for our plugin: ' . esc_html($hook_extra['plugin']));
+            
+            // Store the current activation status
+            $is_active = is_plugin_active($this->slug);
+            update_option('aqm_blog_post_feed_active', $is_active);
+            $this->log('Stored plugin activation status: ' . ($is_active ? 'active' : 'inactive'));
+            
             // Set a transient that we can check after the update
             $set = set_transient( 'aqm_reactivate_after_update', '1', HOUR_IN_SECONDS );
-            error_log('[AQM BPF Updater] Setting reactivation transient. Success: ' . ($set ? 'true' : 'false'));
+            $this->log('Setting reactivation transient. Success: ' . ($set ? 'true' : 'false'));
         } else {
-            // Optional: Log if the hook fired but didn't match our plugin
-            // if (is_array($hook_extra) && isset($hook_extra['plugin'])) {
-            //     error_log('[AQM BPF Updater] upgrader_pre_install hook fired for a different plugin: ' . esc_html($hook_extra['plugin']));
-            // }
+            $this->log('upgrader_pre_install hook fired for a different plugin: ' . 
+                (isset($hook_extra['plugin']) ? esc_html($hook_extra['plugin']) : 'unknown'), 'debug');
         }
         return $true; // Pass through the original value
     }
@@ -247,13 +281,13 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
      * @param array       $options         Array of bulk item update data.
      */
     public function handle_activation_persistence( $upgrader_object, $options ) {
-        error_log('AQM GHU Debug: handle_activation_persistence START');
-        error_log('AQM GHU Debug: Action: ' . (isset($options['action']) ? $options['action'] : 'N/A'));
-        error_log('AQM GHU Debug: Type: ' . (isset($options['type']) ? $options['type'] : 'N/A'));
+        $this->log('handle_activation_persistence START', 'debug');
+        $this->log('Action: ' . (isset($options['action']) ? $options['action'] : 'N/A'), 'debug');
+        $this->log('Type: ' . (isset($options['type']) ? $options['type'] : 'N/A'), 'debug');
 
         // Check if this is a plugin update
         if ( isset($options['action']) && $options['action'] === 'update' && isset($options['type']) && $options['type'] === 'plugin' ) {
-            error_log('AQM GHU Debug: This is a plugin update action.');
+            $this->log('This is a plugin update action.', 'debug');
             
             // Check if our plugin was part of this update
             $our_plugin_updated = false;
@@ -267,37 +301,53 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
             }
             
             if ($our_plugin_updated) {
-                error_log('AQM GHU Debug: Our plugin (' . $this->slug . ') was updated.');
+                $this->log('Our plugin (' . $this->slug . ') was updated.');
 
                 // Check if the plugin directory exists RIGHT NOW
                 $plugin_dir = WP_PLUGIN_DIR . '/' . $this->plugin_slug;
                 if (is_dir($plugin_dir)) {
-                    error_log('AQM GHU Debug: Plugin directory EXISTS at: ' . $plugin_dir);
+                    $this->log('Plugin directory EXISTS at: ' . $plugin_dir, 'debug');
+                    
+                    // Check activation state option
+                    $should_be_active = get_option('aqm_blog_post_feed_active', false);
+                    $this->log('Should be active option: ' . ($should_be_active ? 'Yes' : 'No'));
+
+                    if ( $should_be_active ) {
+                        $this->log('Plugin should be active, attempting reactivation...');
+                        
+                        // Include plugin functions if not already loaded
+                        if (!function_exists('activate_plugin')) {
+                            require_once(ABSPATH . 'wp-admin/includes/plugin.php');
+                        }
+                        
+                        // Try to reactivate the plugin
+                        $result = activate_plugin($this->slug);
+                        
+                        if (is_wp_error($result)) {
+                            $this->log('Error reactivating plugin: ' . $result->get_error_message(), 'error');
+                            // Set a transient as a backup method
+                            set_transient('aqm_reactivate_after_update', '1', 5 * MINUTE_IN_SECONDS);
+                        } else {
+                            $this->log('Plugin successfully reactivated!');
+                            // Clear any transients since we've successfully reactivated
+                            delete_transient('aqm_reactivate_after_update');
+                        }
+                        
+                        // Clear plugin cache to ensure WordPress recognizes the activation
+                        wp_clean_plugins_cache(true);
+                    }
                 } else {
-                    error_log('AQM GHU Debug: Plugin directory MISSING at: ' . $plugin_dir);
-                }
-
-                // Check activation state option
-                $should_be_active = get_option('aqm_blog_post_feed_active', false);
-                error_log('AQM GHU Debug: Should be active option: ' . ($should_be_active ? 'Yes' : 'No'));
-
-                if ( $should_be_active ) {
-                    error_log('AQM GHU Debug: Attempting reactivation...');
-                    // Use a transient to signal reactivation needed, as doing it here might be too early
-                    set_transient('aqm_reactivate_after_update', '1', 60); // Store for 60 seconds
-                    error_log('AQM GHU Debug: Reactivation transient set.');
-
-                    // Avoid reactivating directly here as files might not be fully settled
-                    // activate_plugin( $this->slug );
-                    // wp_clean_plugins_cache( true ); // Clear cache after potential activation
+                    $this->log('Plugin directory MISSING at: ' . $plugin_dir, 'error');
+                    // Set a longer transient as a backup method since directory isn't ready yet
+                    set_transient('aqm_reactivate_after_update', '1', 5 * MINUTE_IN_SECONDS);
                 }
             } else {
-                 error_log('AQM GHU Debug: Our plugin was NOT part of this update batch.');
+                $this->log('Our plugin was NOT part of this update batch.', 'debug');
             }
         } else {
-            error_log('AQM GHU Debug: Not a plugin update action or missing data.');
+            $this->log('Not a plugin update action or missing data.', 'debug');
         }
-         error_log('AQM GHU Debug: handle_activation_persistence END');
+        $this->log('handle_activation_persistence END', 'debug');
     }
 
     /**
@@ -315,23 +365,22 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
         global $wp_filesystem;
 
         // Detailed Logging Start
-        error_log('[AQM BPF Updater DEBUG] --- upgrader_source_selection (v2 - Return Path) ---');
-        error_log('[AQM BPF Updater DEBUG] Input source: ' . print_r($source, true));
-        error_log('[AQM BPF Updater DEBUG] Remote source: ' . print_r($remote_source, true));
-        error_log('[AQM BPF Updater DEBUG] Hook Extra: ' . print_r($hook_extra, true));
-        // error_log('[AQM BPF Updater DEBUG] Upgrader Skin Plugin Info: ' . print_r(isset($upgrader->skin->plugin_info) ? $upgrader->skin->plugin_info : 'N/A', true)); // Can be verbose
-        error_log('[AQM BPF Updater DEBUG] Target Plugin Slug (dir): ' . $this->plugin_slug);
-        error_log('[AQM BPF Updater DEBUG] Target Plugin Basename: ' . $this->slug);
+        $this->log('--- upgrader_source_selection hook fired ---', 'debug');
+        $this->log('Input source: ' . print_r($source, true), 'debug');
+        $this->log('Remote source: ' . print_r($remote_source, true), 'debug');
+        $this->log('Hook Extra: ' . print_r($hook_extra, true), 'debug');
+        $this->log('Target Plugin Slug (dir): ' . $this->plugin_slug, 'debug');
+        $this->log('Target Plugin Basename: ' . $this->slug, 'debug');
 
         // Check if $wp_filesystem is initialized
         if ( ! $wp_filesystem instanceof WP_Filesystem_Base ) {
-            error_log('[AQM BPF Updater ERROR] WP_Filesystem not initialized!');
+            $this->log('WP_Filesystem not initialized!', 'error');
             // Attempt to initialize it (though it should be initialized by WP core during updates)
             WP_Filesystem();
             if ( ! $wp_filesystem instanceof WP_Filesystem_Base ) {
                 return new WP_Error('filesystem_error', 'WP_Filesystem could not be initialized.');
             }
-            error_log('[AQM BPF Updater DEBUG] WP_Filesystem initialized manually.');
+            $this->log('WP_Filesystem initialized manually.', 'debug');
         }
 
         // Check if this is our plugin being updated.
@@ -344,41 +393,50 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
             $is_our_plugin = true;
         }
 
-        error_log('[AQM BPF Updater DEBUG] Identifying as our plugin: ' . ($is_our_plugin ? 'Yes' : 'No'));
+        $this->log('Identifying as our plugin: ' . ($is_our_plugin ? 'Yes' : 'No'), 'debug');
 
         // If it's not our plugin, return the original source
         if ( ! $is_our_plugin ) {
-            error_log('[AQM BPF Updater DEBUG] Not our plugin, returning original source.');
+            $this->log('Not our plugin, returning original source.', 'debug');
             return $source;
         }
 
-        error_log('[AQM BPF Updater] upgrader_source_selection triggered for our plugin.');
-        error_log('[AQM BPF Updater DEBUG] Original source path: ' . $source);
+        $this->log('upgrader_source_selection triggered for our plugin.');
+        $this->log('Original source path: ' . $source, 'debug');
 
         // Check if the source path is valid
         if ( ! $wp_filesystem->exists( $source ) ) {
-            error_log('[AQM BPF Updater] Source path does not exist: ' . $source);
+            $this->log('Source path does not exist: ' . $source, 'error');
             return new WP_Error('aqm_source_not_found', 'Plugin update source directory not found.', $source);
         }
-        error_log('[AQM BPF Updater DEBUG] Source path exists: ' . $source);
+        $this->log('Source path exists: ' . $source, 'debug');
 
         // List files in the source directory
         $source_files = $wp_filesystem->dirlist( $source );
-        error_log('[AQM BPF Updater DEBUG] dirlist result for source (' . $source . '): ' . print_r($source_files, true));
+        $this->log('dirlist result for source (' . $source . '): ' . print_r($source_files, true), 'debug');
 
         // Check if it contains a single directory (the problematic GitHub format)
         if ( is_array( $source_files ) && count( $source_files ) === 1 && reset( $source_files )['type'] === 'd' ) {
             $subdir_name = key( $source_files );
             $new_source = trailingslashit( $source ) . $subdir_name;
 
-            error_log('[AQM BPF Updater] Found single subdirectory: ' . esc_html($subdir_name));
-            error_log('[AQM BPF Updater] GitHub ZIP structure detected. Returning new source path: ' . esc_html($new_source));
+            $this->log('Found single subdirectory: ' . esc_html($subdir_name));
+            $this->log('GitHub ZIP structure detected. Returning new source path: ' . esc_html($new_source));
+            
+            // Check if the subdirectory contains our main plugin file
+            $plugin_file_path = trailingslashit($new_source) . basename($this->plugin_file);
+            if ($wp_filesystem->exists($plugin_file_path)) {
+                $this->log('Verified main plugin file exists in subdirectory: ' . basename($this->plugin_file));
+            } else {
+                $this->log('Warning: Main plugin file not found in subdirectory: ' . $plugin_file_path, 'error');
+                // Continue anyway as WordPress will handle this later
+            }
 
-            // **Correction:** Instead of moving, just return the path to the *actual* plugin files
+            // Return the path to the actual plugin files
             return $new_source;
 
         } else {
-            error_log('[AQM BPF Updater] Source directory does not seem to have the GitHub structure (single sub-directory). Returning original source: ' . $source);
+            $this->log('Source directory does not have the GitHub structure (single sub-directory). Returning original source: ' . $source);
         }
 
         // If it wasn't the GitHub structure, or something went wrong listing files, return the original source path
