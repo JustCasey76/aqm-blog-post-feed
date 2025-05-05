@@ -22,7 +22,7 @@ class AQM_Blog_Post_Feed_GitHub_Updater_V2 {
     private $access_token;
     private $plugin_activated;
     private $plugin_slug;
-    private $version = '1.0.16'; // Hardcoded version for this updater
+    private $version = '1.0.17'; // Hardcoded version for this updater
 
     /**
      * Class constructor.
