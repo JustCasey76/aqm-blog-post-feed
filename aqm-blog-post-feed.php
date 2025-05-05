@@ -424,76 +424,8 @@ function aqm_load_more_posts_handler() {
 add_action('wp_ajax_aqm_load_more_posts', 'aqm_load_more_posts_handler');
 add_action('wp_ajax_nopriv_aqm_load_more_posts', 'aqm_load_more_posts_handler');
 
-/**
- * Add custom action links to the plugin entry on the plugins page.
- *
- * @param array  $links An array of plugin action links.
- * @return array An array of plugin action links.
- */
-function aqm_blog_post_feed_add_action_links( $links ) {
-    // Change the link to use '#' and add an ID for JS targeting
-    $check_updates_link = '<a href="#" id="aqm-check-updates-link">' . esc_html__( 'Check for Updates', 'aqm-blog-post-feed' ) . '</a>';
-    // Add a placeholder for status messages
-    $check_updates_link .= '<span id="aqm-update-status" style="margin-left: 5px;"></span>';
-    // Add the link before other links
-    return array_merge( array( 'check_updates' => $check_updates_link ), $links );
-}
-add_filter( 'plugin_action_links_' . AQM_BLOG_POST_FEED_BASENAME, 'aqm_blog_post_feed_add_action_links' );
+// This function has been replaced by the new implementation above
 
-/**
- * Enqueue admin scripts specifically for the plugins page.
- */
-function aqm_enqueue_admin_scripts($hook) {
-    // Only load on the plugins page
-    if ('plugins.php' !== $hook) {
-        return;
-    }
-    
-    $script_path = plugin_dir_url(__FILE__) . 'assets/js/admin-updates.js';
-    $script_asset_path = plugin_dir_path(__FILE__) . 'assets/js/admin-updates.asset.php';
+// This function has been replaced by the new implementation above
 
-    // Use asset file if it exists for dependencies and versioning
-    $dependencies = array('jquery');
-    $version = '1.0.0'; // Fallback version
-    if (file_exists($script_asset_path)) {
-        $asset_info = include($script_asset_path);
-        $dependencies = $asset_info['dependencies'];
-        $version = $asset_info['version'];
-    }
-
-    wp_enqueue_script(
-        'aqm-admin-updates', 
-        $script_path, 
-        $dependencies, 
-        $version, 
-        true // Load in footer
-    );
-
-    // Pass data to the script
-    wp_localize_script('aqm-admin-updates', 'aqm_update_params', array(
-        'ajax_url' => admin_url('admin-ajax.php'),
-        'nonce'    => wp_create_nonce('aqm_check_updates_nonce'),
-        'checking_text' => esc_html__('Checking...', 'aqm-blog-post-feed'),
-        'success_text'  => esc_html__('Check initiated. Refresh or visit Updates page.', 'aqm-blog-post-feed'),
-        'error_text'    => esc_html__('Error checking updates.', 'aqm-blog-post-feed')
-    ));
-}
-add_action('admin_enqueue_scripts', 'aqm_enqueue_admin_scripts');
-
-/**
- * Handle the AJAX request to check for plugin updates.
- */
-function aqm_handle_check_updates_ajax() {
-    // Verify nonce
-    check_ajax_referer('aqm_check_updates_nonce', 'nonce');
-
-    // Clear the transient to force a check on next load/update page visit
-    delete_site_transient('update_plugins');
-    
-    // Optionally, force an immediate check (can be resource-intensive)
-    // wp_update_plugins(); 
-
-    // Send success response
-    wp_send_json_success(array('message' => 'Update check initiated.'));
-}
-add_action('wp_ajax_aqm_check_plugin_updates', 'aqm_handle_check_updates_ajax');
+// This function has been replaced by the new implementation above
