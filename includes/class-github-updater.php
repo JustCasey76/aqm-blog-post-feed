@@ -138,13 +138,11 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
                 $plugin_info->new_version = $version;
                 $plugin_info->url = $this->plugin_data['PluginURI'];
                 
-                // Download link (using zip from GitHub)
-                $download_link = $repo_info->zipball_url;
+                // Use a clean ZIP URL instead of GitHub's auto-generated ZIP
+                // This follows the established process in Memory 039d1bc2
+                $download_link = $this->get_clean_zip_url($version);
                 
-                // Add access token if provided
-                if (!empty($this->access_token)) {
-                    $download_link = add_query_arg(array('access_token' => $this->access_token), $download_link);
-                }
+                error_log('[AQM BPF Updater] Using clean ZIP URL: ' . $download_link);
                 
                 $plugin_info->package = $download_link;
                 
@@ -156,6 +154,25 @@ class AQM_Blog_Post_Feed_GitHub_Updater {
         return $transient;
     }
 
+    /**
+     * Get the URL for the clean ZIP file based on the version number.
+     * 
+     * @param string $version The version number without 'v' prefix
+     * @return string The URL to the clean ZIP file
+     */
+    private function get_clean_zip_url($version) {
+        // Base URL where clean ZIPs are hosted
+        $base_url = 'https://aqmarketing.com/plugin-updates/aqm-blog-post-feed/';
+        
+        // Construct the filename: aqm-blog-post-feed-{version}.zip
+        $filename = 'aqm-blog-post-feed-' . $version . '.zip';
+        
+        // Full URL to the clean ZIP
+        $clean_zip_url = $base_url . $filename;
+        
+        return $clean_zip_url;
+    }
+    
     /**
      * Plugin API call to get plugin information.
      * 
