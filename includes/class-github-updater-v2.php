@@ -22,7 +22,7 @@ class AQM_Blog_Post_Feed_GitHub_Updater_V2 {
     private $access_token;
     private $plugin_activated;
     private $plugin_slug;
-    private $version = '1.0.17'; // Hardcoded version for this updater
+    private $version = '1.0.18'; // Hardcoded version for this updater
 
     /**
      * Class constructor.
@@ -478,26 +478,58 @@ class AQM_Blog_Post_Feed_GitHub_Updater_V2 {
             $new_source = trailingslashit($source) . $subdir_name;
 
             $this->log('Found single subdirectory: ' . esc_html($subdir_name));
-            $this->log('GitHub ZIP structure detected. Returning new source path: ' . esc_html($new_source));
             
-            // Check if the subdirectory contains our main plugin file
-            $plugin_file_path = trailingslashit($new_source) . basename($this->plugin_file);
-            if ($wp_filesystem->exists($plugin_file_path)) {
-                $this->log('Verified main plugin file exists in subdirectory: ' . basename($this->plugin_file));
+            // AGGRESSIVE APPROACH: Instead of just returning the path, let's actually rename the directory
+            // Get the parent directory and create our target directory name
+            $parent_dir = dirname($source);
+            $target_dir = trailingslashit($parent_dir) . $this->plugin_slug;
+            
+            $this->log('Parent directory: ' . $parent_dir);
+            $this->log('Target directory: ' . $target_dir);
+            
+            // Check if the target directory already exists and remove it if it does
+            if ($wp_filesystem->exists($target_dir)) {
+                $this->log('Target directory already exists, removing it: ' . $target_dir);
+                $wp_filesystem->delete($target_dir, true); // true to recursively delete
+            }
+            
+            // Move the contents from the GitHub subdirectory to our target directory
+            if (!$wp_filesystem->mkdir($target_dir)) {
+                $this->log('Failed to create target directory: ' . $target_dir, 'error');
+                error_log('[AQM BPF UPDATER V2] FAILED TO CREATE TARGET DIRECTORY: ' . $target_dir);
+                return $source; // Return original source as fallback
+            }
+            
+            // Copy all files from the GitHub subdirectory to our target directory
+            $github_files = $wp_filesystem->dirlist($new_source);
+            if (is_array($github_files)) {
+                foreach ($github_files as $file => $file_data) {
+                    $source_file = trailingslashit($new_source) . $file;
+                    $target_file = trailingslashit($target_dir) . $file;
+                    
+                    if ($file_data['type'] === 'd') {
+                        // It's a directory, copy recursively
+                        $wp_filesystem->mkdir($target_file);
+                        copy_dir($source_file, $target_file);
+                    } else {
+                        // It's a file, copy directly
+                        $wp_filesystem->copy($source_file, $target_file);
+                    }
+                }
+                $this->log('Successfully copied all files to target directory');
             } else {
-                $this->log('Warning: Main plugin file not found in subdirectory: ' . $plugin_file_path, 'error');
-                // Continue anyway as WordPress will handle this later
+                $this->log('Failed to list files in GitHub subdirectory', 'error');
             }
             
             // Add extremely clear logging
             error_log('=========================================================');
             error_log('[AQM BPF UPDATER V2] GITHUB ZIP STRUCTURE DETECTED');
             error_log('[AQM BPF UPDATER V2] SUBDIRECTORY: ' . $subdir_name);
-            error_log('[AQM BPF UPDATER V2] RETURNING NEW SOURCE: ' . $new_source);
+            error_log('[AQM BPF UPDATER V2] CREATED NEW TARGET: ' . $target_dir);
             error_log('=========================================================');
 
-            // Return the path to the actual plugin files
-            return $new_source;
+            // Return the path to our new target directory
+            return $target_dir;
 
         } else {
             $this->log('Source directory does not have the GitHub structure (single sub-directory). Returning original source: ' . $source);
