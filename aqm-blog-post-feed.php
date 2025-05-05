@@ -3,29 +3,31 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 1.0.27
+Version: 3.0.0
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 GitHub Plugin URI: https://github.com/JustCasey76/aqm-blog-post-feed
-Primary Branch: master
+Primary Branch: main
+Requires at least: 5.2
+Requires PHP: 7.2
 */
 
-// Simple Log Test
-error_log('[AQM BPF LOG TEST] Main plugin file loaded.');
-
-// Exit if accessed directly.
-if ( ! defined( 'ABSPATH' ) ) {
+// Prevent direct access
+if (!defined('ABSPATH')) {
     exit;
 }
 
-// Define plugin constants
+// Version for cache busting
+define('AQM_BLOG_POST_FEED_VERSION', '3.0.0');
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
-define('AQM_BLOG_POST_FEED_VERSION', '1.0.27'); // Updated after removing redundant updater files
 
-// Plugin version history and update mechanism has been simplified
-// The GitHub updater class now uses a minimal implementation to prevent errors
+// Set up text domain for translations
+function aqm_blog_post_feed_load_textdomain() {
+    load_plugin_textdomain('aqm-blog-post-feed', false, dirname(plugin_basename(__FILE__)) . '/languages');
+}
+add_action('init', 'aqm_blog_post_feed_load_textdomain');
 
 // Register activation and deactivation hooks
 register_activation_hook(__FILE__, 'aqm_blog_post_feed_activate');
@@ -45,86 +47,193 @@ function aqm_blog_post_feed_activate() {
 function aqm_blog_post_feed_deactivate() {
     // Update activation state in options table
     update_option('aqm_blog_post_feed_active', false);
+    // Store that the plugin was active before deactivation
+    update_option('aqm_blog_post_feed_was_active', false);
 }
 
-// Include the custom updater class
+// Include the GitHub Updater class
 require_once plugin_dir_path(__FILE__) . 'includes/class-aqmbpf-updater.php';
 
-// Initialize GitHub Updater
-function aqm_github_updater_init() {
-    // Log that we're using the custom updater
+// Initialize the GitHub Updater
+function aqm_blog_post_feed_init_github_updater() {
+    // Log that we're initializing the updater
     error_log('=========================================================');
-    error_log('[AQM BPF v1.0.27] USING CUSTOM UPDATER CLASS');
+    error_log('[AQM BLOG POST FEED v' . AQM_BLOG_POST_FEED_VERSION . '] USING CUSTOM UPDATER CLASS');
     error_log('=========================================================');
     
-    // Initialize the updater
-    new AQMBPF_Updater(
-        __FILE__,                        // Plugin File
-        'JustCasey76',                   // GitHub username
-        'aqm-blog-post-feed',            // GitHub repository name
-        ''                               // Optional GitHub access token (for private repos)
-    );
+    if (class_exists('AQMBPF_Updater')) {
+        try {
+            new AQMBPF_Updater(
+                __FILE__,                // Plugin File
+                'JustCasey76',           // GitHub username
+                'aqm-blog-post-feed',    // GitHub repository name
+                ''                       // Optional GitHub access token (for private repos)
+            );
+            
+            // Set last update check time
+            update_option('aqm_blog_post_feed_last_update_check', time());
+        } catch (Exception $e) {
+            error_log('[AQM BLOG POST FEED] Error initializing updater: ' . $e->getMessage());
+        }
+    } else {
+        error_log('[AQM BLOG POST FEED] Updater class not found');
+    }
 }
-add_action('init', 'aqm_github_updater_init');
+add_action('admin_init', 'aqm_blog_post_feed_init_github_updater');
+
+// Show update success message
+function aqm_blog_post_feed_show_update_success() {
+    // Only show on plugins page
+    $screen = get_current_screen();
+    if (!$screen || $screen->id !== 'plugins') {
+        return;
+    }
+    
+    // Check if we're coming from an update
+    if (isset($_GET['aqm_updated']) && $_GET['aqm_updated'] === '1') {
+        echo '<div class="notice notice-success is-dismissible">
+            <p><strong>AQM Blog Post Feed Updated Successfully!</strong> The plugin has been updated to version ' . AQM_BLOG_POST_FEED_VERSION . '.</p>
+        </div>';
+    }
+    
+    // Check if we're showing a reactivation notice
+    if (get_transient('aqmbpf_reactivated')) {
+        // Delete the transient
+        delete_transient('aqmbpf_reactivated');
+        
+        echo '<div class="notice notice-success is-dismissible">
+            <p><strong>AQM Blog Post Feed Reactivated!</strong> The plugin has been reactivated after an update.</p>
+        </div>';
+    }
+}
+add_action('admin_notices', 'aqm_blog_post_feed_show_update_success');
 
 /**
  * Attempts to reactivate the plugin after an update is complete.
  * Hooks into 'upgrader_process_complete'.
- *
+ * 
  * @param WP_Upgrader $upgrader_object WP_Upgrader instance.
  * @param array       $options         Array of bulk item update data.
  */
-function aqm_blog_post_feed_reactivate_on_update( $upgrader_object, $options ) {
-    // Check if the transient was set
-    if ( get_transient( 'aqm_reactivate_after_update' ) === '1' ) {
-        error_log('[AQM BPF Reactivate] Reactivation transient found.');
-        // Delete the transient so we don't try again unnecessarily
-        delete_transient( 'aqm_reactivate_after_update' );
-
-        // Check if the update action was for plugins and specifically our plugin
-        $current_plugin_path = plugin_basename( __FILE__ );
-        if ( isset( $options['action'], $options['type'], $options['plugins'] ) &&
-             $options['action'] === 'update' && $options['type'] === 'plugin' ) {
-
-            $reactivated = false;
-            foreach ( $options['plugins'] as $plugin ) {
-                if ( $plugin === $current_plugin_path ) {
-                    error_log('[AQM BPF Reactivate] Update process completed for our plugin: ' . esc_html($current_plugin_path));
-                    // Check if the plugin is inactive
-                    if ( ! is_plugin_active( $current_plugin_path ) ) {
-                        error_log('[AQM BPF Reactivate] Plugin is inactive, attempting reactivation...');
-                        $result = activate_plugin( $current_plugin_path );
-                        if ( is_wp_error( $result ) ) {
-                            error_log('[AQM BPF Reactivate] Error reactivating plugin: ' . $result->get_error_message());
-                        } else {
-                            error_log('[AQM BPF Reactivate] Plugin successfully reactivated.');
-                            $reactivated = true;
-                        }
-                    } else {
-                        error_log('[AQM BPF Reactivate] Plugin is already active.');
-                    }
-                    break; // Found our plugin, no need to loop further
-                }
-            }
-        } else {
-            error_log('[AQM BPF Reactivate] Update hook fired, but action/type/plugin info not as expected or did not match.');
-            error_log('[AQM BPF Reactivate] Options array: ' . print_r($options, true)); // Log options for debugging
+function aqm_blog_post_feed_reactivate_on_update($upgrader_object, $options) {
+    // Check if this is a plugin update
+    if ($options['action'] !== 'update' || $options['type'] !== 'plugin') {
+        return;
+    }
+    
+    // Get the plugin basename
+    $plugin_basename = plugin_basename(__FILE__);
+    
+    // Check if our plugin was updated
+    if (!isset($options['plugins']) || !in_array($plugin_basename, $options['plugins'])) {
+        return;
+    }
+    
+    error_log('[AQM BLOG POST FEED] Plugin update detected, checking activation state');
+    
+    // Check if the plugin was active before the update
+    if (get_option('aqm_blog_post_feed_was_active', false)) {
+        // Make sure plugin functions are loaded
+        if (!function_exists('is_plugin_active') || !function_exists('activate_plugin')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
-
-    } else {
-         // Optional: Log if the hook fired but transient wasn't found
-         // error_log('[AQM BPF Reactivate] upgrader_process_complete hook fired, but reactivation transient not found.');
+        
+        // If plugin is not active, reactivate it
+        if (!is_plugin_active($plugin_basename)) {
+            error_log('[AQM BLOG POST FEED] Plugin was active before update but is now inactive, reactivating');
+            
+            // Reactivate the plugin
+            $result = activate_plugin($plugin_basename);
+            
+            if (is_wp_error($result)) {
+                error_log('[AQM BLOG POST FEED] Reactivation failed: ' . $result->get_error_message());
+            } else {
+                error_log('[AQM BLOG POST FEED] Plugin successfully reactivated');
+                
+                // Set a transient to show a notice
+                set_transient('aqmbpf_reactivated', true, 30);
+            }
+            
+            // Clear plugin cache
+            wp_clean_plugins_cache(true);
+        }
     }
 }
-add_action( 'upgrader_process_complete', 'aqm_blog_post_feed_reactivate_on_update', 10, 2 );
+add_action('upgrader_process_complete', 'aqm_blog_post_feed_reactivate_on_update', 10, 2);
 
-// Add a notice to show when the plugin has been reactivated
-function aqm_blog_post_feed_reactivation_notice() {
-    if (isset($_GET['aqm_reactivated']) && $_GET['aqm_reactivated'] === '1') {
-        echo '<div class="notice notice-success is-dismissible"><p>AQM Blog Post Feed plugin has been automatically reactivated.</p></div>';
-    }
+/**
+ * Add custom action links to the plugin entry on the plugins page.
+ *
+ * @param array $links An array of plugin action links.
+ * @return array An array of plugin action links.
+ */
+function aqm_blog_post_feed_add_action_links($links) {
+    // Add 'Check for Updates' link
+    $check_update_link = '<a href="' . wp_nonce_url(admin_url('admin-ajax.php?action=aqm_blog_post_feed_check_updates'), 'aqm-blog-post-feed-check-updates') . '" class="aqm-blog-check-updates">Check for Updates</a>';
+    array_unshift($links, $check_update_link);
+    
+    return $links;
 }
-add_action('admin_notices', 'aqm_blog_post_feed_reactivation_notice');
+add_filter('plugin_action_links_' . AQM_BLOG_POST_FEED_BASENAME, 'aqm_blog_post_feed_add_action_links');
+
+/**
+ * Enqueue admin scripts specifically for the plugins page.
+ *
+ * @param string $hook The current admin page.
+ */
+function aqm_blog_post_feed_enqueue_admin_scripts($hook) {
+    if ($hook !== 'plugins.php') {
+        return;
+    }
+    
+    // Enqueue the script
+    wp_enqueue_script(
+        'aqm-blog-post-feed-admin-js',
+        plugins_url('assets/js/admin-updates.js', __FILE__),
+        array('jquery'),
+        AQM_BLOG_POST_FEED_VERSION,
+        true
+    );
+    
+    // Localize the script with our data
+    wp_localize_script(
+        'aqm-blog-post-feed-admin-js',
+        'aqmBlogFeedData',
+        array(
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('aqm-blog-post-feed-check-updates'),
+            'checkingText' => 'Checking for updates...',
+            'successText' => 'Update check complete!',
+            'errorText' => 'Error checking for updates.'
+        )
+    );
+}
+add_action('admin_enqueue_scripts', 'aqm_blog_post_feed_enqueue_admin_scripts');
+
+/**
+ * Handle the AJAX request to check for plugin updates.
+ */
+function aqm_blog_post_feed_handle_check_updates_ajax() {
+    // Verify nonce
+    check_ajax_referer('aqm-blog-post-feed-check-updates', 'nonce');
+    
+    // Clear update transients to force a fresh check
+    delete_transient('aqmbpf_github_data_' . md5('JustCasey76' . 'aqm-blog-post-feed'));
+    delete_site_transient('update_plugins');
+    
+    // Force WordPress to check for updates
+    wp_clean_plugins_cache(true);
+    
+    // Log the manual update check
+    error_log('[AQM BLOG POST FEED] Manual update check triggered');
+    
+    // Update the last check time
+    update_option('aqm_blog_post_feed_last_update_check', time());
+    
+    // Send success response
+    wp_send_json_success(array('message' => 'Update check completed successfully.'));
+}
+add_action('wp_ajax_aqm_blog_post_feed_check_updates', 'aqm_blog_post_feed_handle_check_updates_ajax');
 
 // Function to initialize the Divi module
 function aqm_bpf_initialize_module() {

@@ -92,6 +92,7 @@ class AQMBPF_Updater {
         // Log initialization
         error_log('=========================================================');
         error_log('[AQMBPF UPDATER] Initialized for ' . $this->repository);
+        error_log('[AQMBPF UPDATER] Plugin version: ' . $this->plugin_data['Version']);
         error_log('=========================================================');
     }
 
@@ -161,12 +162,20 @@ class AQMBPF_Updater {
             'headers' => array(
                 'Accept' => 'application/json',
                 'User-Agent' => 'WordPress/' . get_bloginfo('version') . '; ' . get_bloginfo('url')
-            )
+            ),
+            'timeout' => 30
         ));
 
         // Check for errors
         if (is_wp_error($response) || 200 !== wp_remote_retrieve_response_code($response)) {
             error_log('[AQMBPF UPDATER] Error getting update data: ' . wp_remote_retrieve_response_message($response));
+            if (is_wp_error($response)) {
+                error_log('[AQMBPF UPDATER] Error code: ' . $response->get_error_code());
+                error_log('[AQMBPF UPDATER] Error message: ' . $response->get_error_message());
+            } else {
+                error_log('[AQMBPF UPDATER] Response code: ' . wp_remote_retrieve_response_code($response));
+                error_log('[AQMBPF UPDATER] Response body: ' . wp_remote_retrieve_body($response));
+            }
             return false;
         }
 
@@ -246,7 +255,9 @@ class AQMBPF_Updater {
         if (is_plugin_active($this->plugin_basename)) {
             // Set a transient to reactivate the plugin after update
             set_transient('aqmbpf_was_active', true, 5 * MINUTE_IN_SECONDS);
-            error_log('[AQMBPF UPDATER] Plugin was active, setting transient');
+            // Also set the option for the main plugin reactivation function
+            update_option('aqm_blog_post_feed_was_active', true);
+            error_log('[AQMBPF UPDATER] Plugin was active, setting transient and option');
         }
         
         return $return;
@@ -299,6 +310,9 @@ class AQMBPF_Updater {
                 
                 // Clear the reactivation transient since we successfully reactivated
                 delete_transient('aqmbpf_reactivate');
+                
+                // Set a transient to show a notice
+                set_transient('aqmbpf_reactivated', true, 30);
             }
             
             // Clear plugin cache
@@ -398,6 +412,9 @@ class AQMBPF_Updater {
                 error_log('[AQMBPF UPDATER] Reactivation failed: ' . $result->get_error_message());
             } else {
                 error_log('[AQMBPF UPDATER] Plugin successfully reactivated');
+                
+                // Set a transient to show a notice
+                set_transient('aqmbpf_reactivated', true, 30);
             }
             
             // Clear plugin cache
