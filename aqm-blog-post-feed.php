@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 1.0.22
+Version: 1.0.23
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 GitHub Plugin URI: https://github.com/JustCasey76/aqm-blog-post-feed
@@ -22,6 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
+define('AQM_BLOG_POST_FEED_VERSION', '1.0.23');
 
 // Plugin version history and update mechanism has been simplified
 // The GitHub updater class now uses a minimal implementation to prevent errors
@@ -46,23 +47,18 @@ function aqm_blog_post_feed_deactivate() {
     update_option('aqm_blog_post_feed_active', false);
 }
 
-// Initialize GitHub Updater
+// Include the Plugin Update Checker implementation
+require_once plugin_dir_path(__FILE__) . 'includes/class-plugin-update-checker-impl.php';
+
+// Initialize Plugin Update Checker
 function aqm_github_updater_init() {
-    // Include the fixed GitHub updater class
-    require_once plugin_dir_path(__FILE__) . 'includes/class-aqm-github-updater-fixed.php';
-    
-    // Log that we're using the fixed GitHub updater
+    // Log that we're using the Plugin Update Checker
     error_log('=========================================================');
-    error_log('[AQM BPF v1.0.22] USING FIXED GITHUB UPDATER');
+    error_log('[AQM BPF v1.0.23] USING PLUGIN UPDATE CHECKER LIBRARY');
     error_log('=========================================================');
     
-    // Initialize the fixed GitHub updater
-    new AQM_Blog_Post_Feed_GitHub_Updater(
-        __FILE__,                        // Plugin File
-        'JustCasey76',                   // GitHub username
-        'aqm-blog-post-feed',            // GitHub repository name
-        ''                               // Optional GitHub access token (for private repos)
-    );
+    // Initialize the Plugin Update Checker
+    aqm_blog_post_feed_init_update_checker();
 }
 add_action('init', 'aqm_github_updater_init');
 
