@@ -106,6 +106,12 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                     'step' => 0.1,
                 ),
             ),
+            'title_font_family' => array(
+                'label'           => esc_html__('Title Font Family', 'aqm-blog-post-feed'),
+                'type'            => 'font',
+                'default'         => '',
+                'description'     => esc_html__('Choose a font family for the post title.', 'aqm-blog-post-feed'),
+            ),
             'content_font_size' => array(
                 'label'           => esc_html__('Content Font Size (px)', 'aqm-blog-post-feed'),
                 'type'            => 'range',
@@ -130,6 +136,12 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                     'max'  => 3,
                     'step' => 0.1,
                 ),
+            ),
+            'content_font_family' => array(
+                'label'           => esc_html__('Content Font Family', 'aqm-blog-post-feed'),
+                'type'            => 'font',
+                'default'         => '',
+                'description'     => esc_html__('Choose a font family for the post content/excerpt.', 'aqm-blog-post-feed'),
             ),
             'content_padding' => array(
                 'label'           => esc_html__('Content Padding', 'aqm-blog-post-feed'),
@@ -246,17 +258,8 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                 'default'         => 'off',
                 'description'     => esc_html__('Toggle to set the "Read More" link to uppercase.', 'aqm-blog-post-feed'),
             ),
-			'background_zoom' => array(
-                'label'           => esc_html__('Background Zoom Amount (%)', 'aqm-blog-post-feed'),
-                'type'            => 'range',
-                'default'         => 125,
-                'options'         => array(
-                    'min'  => 100,
-                    'max'  => 150,
-                    'step' => 1,
-                ),
-                'description'     => esc_html__('Adjust the zoom amount for the background image when hovering over the post item.', 'aqm-blog-post-feed'),
-            ),
+            // Background size is hardcoded to 120% with hover at 135%
+            
             'post_limit' => array(
                 'label'           => esc_html__('Maximum Number of Posts', 'aqm-blog-post-feed'),
                 'type'            => 'range',
@@ -363,9 +366,11 @@ public function render($attrs, $render_slug, $content = null) {
         $title_font_size = $this->props['title_font_size'];
         $title_font_size_mobile = $this->props['title_font_size_mobile'];
         $title_line_height = $this->props['title_line_height'];
+        $title_font_family = isset($this->props['title_font_family']) ? $this->props['title_font_family'] : '';
         $content_font_size = $this->props['content_font_size'];
         $content_color = isset($this->props['content_color']) ? $this->props['content_color'] : '#ffffff';
         $content_line_height = $this->props['content_line_height'];
+        $content_font_family = isset($this->props['content_font_family']) ? $this->props['content_font_family'] : '';
         $content_padding = $this->format_padding($this->props['content_padding']);
         $meta_font_size = $this->props['meta_font_size'];
         $meta_line_height = $this->props['meta_line_height'];
@@ -380,7 +385,9 @@ public function render($attrs, $render_slug, $content = null) {
         $read_more_uppercase = $this->props['read_more_uppercase'];
         $excerpt_limit = intval($this->props['excerpt_limit']);
         $read_more_text = $this->props['read_more_text'];
-        $background_zoom = $this->props['background_zoom'];
+        // Hardcoded background sizes
+        $background_size = 120;
+        $background_zoom = 135; // 15% larger than default
         $post_limit = intval($this->props['post_limit']);
         
         // Load More settings
@@ -443,14 +450,14 @@ public function render($attrs, $render_slug, $content = null) {
 
 
                 // Post item with background image and zoom effect on hover
-                $output .= '<div class="aqm-post-item" style="border-radius: ' . esc_attr($item_border_radius) . 'px; overflow: hidden; position: relative; min-height: 300px; background-image: url(' . esc_url($thumbnail_url) . '); background-size: 110%; background-position: center; transition: background-size 0.5s ease;">';
+                $output .= '<div class="aqm-post-item" style="border-radius: ' . esc_attr($item_border_radius) . 'px; overflow: hidden; position: relative; min-height: 300px; background-image: url(' . esc_url($thumbnail_url) . '); background-size: ' . esc_attr($background_size) . '%; background-position: center; transition: background-size 0.5s ease;">';
                 
                 // Full height overlay
                 $output .= '<div class="aqm-post-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; transition: background-color 0.3s ease;"></div>';
                 
                 // Full height post content with padding control
                 $output .= '<div class="aqm-post-content" style="position: relative; z-index: 2; padding:' . esc_attr($content_padding) . '; color: #fff; display: flex; flex-direction: column; justify-content: flex-end;">';
-                $output .= '<h3 class="aqm-post-title" style="color:' . esc_attr($title_color) . '; font-size:' . esc_attr($title_font_size) . 'px; line-height:' . esc_attr($title_line_height) . 'em; margin: 0;">' . get_the_title() . '</h3>';
+                $output .= '<h3 class="aqm-post-title" style="color:' . esc_attr($title_color) . '; font-size:' . esc_attr($title_font_size) . 'px; line-height:' . esc_attr($title_line_height) . 'em; margin: 0;' . ($title_font_family ? ' font-family:' . esc_attr($title_font_family) . ';' : '') . '">' . get_the_title() . '</h3>';
                 
                 // Meta (author and date with icons)
                 $output .= '<p class="aqm-post-meta" style="color:' . esc_attr($meta_color) . '; font-size:' . esc_attr($meta_font_size) . 'px; line-height:' . esc_attr($meta_line_height) . 'em;">';
@@ -459,7 +466,7 @@ public function render($attrs, $render_slug, $content = null) {
                 $output .= '</p>';
                 
                 // Excerpt with line height control and word limit from content
-$output .= '<p class="aqm-post-excerpt" style="color:' . esc_attr($content_color) . '; font-size:' . esc_attr($content_font_size) . 'px; line-height:' . esc_attr($content_line_height) . 'em;">' . wp_trim_words(has_excerpt() ? get_the_excerpt() : get_the_content(), $excerpt_limit, '...') . '</p>';
+$output .= '<p class="aqm-post-excerpt" style="color:' . esc_attr($content_color) . '; font-size:' . esc_attr($content_font_size) . 'px; line-height:' . esc_attr($content_line_height) . 'em;' . ($content_font_family ? ' font-family:' . esc_attr($content_font_family) . ';' : '') . '">' . wp_trim_words(has_excerpt() ? get_the_excerpt() : get_the_content(), $excerpt_limit, '...') . '</p>';
 
 
                 
@@ -528,9 +535,11 @@ $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="trans
                             title_font_size: ' . $title_font_size . ',
                             title_font_size_mobile: ' . $title_font_size_mobile . ',
                             title_line_height: ' . $title_line_height . ',
+                            title_font_family: "' . $title_font_family . '",
                             content_font_size: ' . $content_font_size . ',
                             content_color: "' . $content_color . '",
                             content_line_height: ' . $content_line_height . ',
+                            content_font_family: "' . $content_font_family . '",
                             content_padding: "' . $content_padding . '",
                             meta_font_size: ' . $meta_font_size . ',
                             meta_line_height: ' . $meta_line_height . ',
@@ -544,8 +553,7 @@ $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="trans
                             read_more_hover_bg_color: "' . $read_more_hover_bg_color . '",
                             excerpt_limit: ' . $excerpt_limit . ',
                             read_more_text: "' . $read_more_text . '",
-                            read_more_uppercase: "' . $read_more_uppercase . '",
-                            background_zoom: ' . $background_zoom . '
+                            read_more_uppercase: "' . $read_more_uppercase . '"
                         },
                         success: function(response) {
                             var data = JSON.parse(response);
@@ -580,9 +588,9 @@ $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="trans
 		
  			.aqm-post-item {
 				transition: background-size 0.5s ease;
-        		background-size: 110% !important;
+        		background-size: ' . esc_attr($background_size) . '% !important;
 				background-position: center; 
-				background-repeat:none;
+				background-repeat: no-repeat;
     		}
 
  			.aqm-post-item .aqm-post-overlay {
@@ -593,7 +601,6 @@ $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="trans
     		}
             .aqm-post-item:hover {
                 background-size: ' . esc_attr($background_zoom) . '% !important;
-				
             }
             .aqm-post-item .aqm-read-more:hover {
                 background-color: ' . esc_attr($read_more_hover_bg_color) . ' !important;

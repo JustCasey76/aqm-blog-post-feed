@@ -1,5 +1,10 @@
 # AQM Blog Post Feed Changelog
 
+## 1.0.38 - May 9, 2025
+- Added font family options for post title and content/excerpt
+- Improved background image handling with fixed 120% default size and 135% hover size
+- Enhanced zoom effect on hover with smooth transitions
+
 ## 1.0.27 - May 5, 2025
 - Removed redundant updater files:
   - Removed old GitHub updater files (`class-github-updater.php`, `class-github-updater-v2.php`)
