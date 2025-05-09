@@ -386,8 +386,8 @@ public function render($attrs, $render_slug, $content = null) {
         $excerpt_limit = intval($this->props['excerpt_limit']);
         $read_more_text = $this->props['read_more_text'];
         // Hardcoded background sizes
-        $background_size = 120;
-        $background_zoom = 135; // 15% larger than default
+        $background_size = 125;
+        $background_zoom = 140; // 15% larger than default
         $post_limit = intval($this->props['post_limit']);
         
         // Load More settings

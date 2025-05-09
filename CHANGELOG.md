@@ -1,5 +1,8 @@
 # AQM Blog Post Feed Changelog
 
+## 1.0.39 - May 9, 2025
+- Updated default background image size to 125% with 140% on hover
+
 ## 1.0.38 - May 9, 2025
 - Added font family options for post title and content/excerpt
 - Improved background image handling with fixed 120% default size and 135% hover size
