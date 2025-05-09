@@ -481,8 +481,12 @@ $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="trans
 
         $output .= '</div>'; // Close aqm-post-feed
         
-        // Add Load More button if enabled
-        if ($enable_load_more === 'on') {
+        // Check if there are more posts than the initial load amount
+        $total_posts = wp_count_posts()->publish;
+        $has_more_posts = ($total_posts > $initial_posts);
+        
+        // Add Load More button if enabled AND there are more posts to load
+        if ($enable_load_more === 'on' && $has_more_posts) {
             // Generate a unique ID for this instance
             $module_id = 'aqm-blog-' . wp_rand(1000, 9999);
             

@@ -1,5 +1,9 @@
 # AQM Blog Post Feed Changelog
 
+## 1.0.40 - May 9, 2025
+- Improved Load More button visibility: now only shows if there are more posts than the initial load amount
+- Ensured consistent background image sizing in AJAX-loaded content
+
 ## 1.0.39 - May 9, 2025
 - Updated default background image size to 125% with 140% on hover
 
