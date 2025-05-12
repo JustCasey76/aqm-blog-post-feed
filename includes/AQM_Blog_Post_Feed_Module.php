@@ -436,6 +436,12 @@ public function render($attrs, $render_slug, $content = null) {
             'orderby' => $orderby,
             'order' => $order,
         );
+        
+        // Exclude current post if we're on a single post page
+        if (is_single()) {
+            $args['post__not_in'] = array(get_the_ID());
+        }
+        
         $posts = new WP_Query($args);
 
         // Use CSS Grid layout
@@ -493,6 +499,9 @@ $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="trans
             $output .= '<div class="aqm-load-more-container" style="text-align: center; margin-top: 30px;">';
             $output .= '<button id="' . $module_id . '-load-more" class="aqm-load-more-button" style="background-color: ' . esc_attr($load_more_bg_color) . '; color: ' . esc_attr($load_more_text_color) . '; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; transition: all 0.3s ease;">' . esc_html($load_more_text) . '</button>';
             $output .= '</div>';
+            
+            // Get current post ID if on a single post
+            $current_post_id = is_single() ? get_the_ID() : 0;
             
             // Add JavaScript to handle AJAX loading
             $output .= '<script>
@@ -557,7 +566,8 @@ $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="trans
                             read_more_hover_bg_color: "' . $read_more_hover_bg_color . '",
                             excerpt_limit: ' . $excerpt_limit . ',
                             read_more_text: "' . $read_more_text . '",
-                            read_more_uppercase: "' . $read_more_uppercase . '"
+                            read_more_uppercase: "' . $read_more_uppercase . '",
+                            current_post_id: ' . $current_post_id . '
                         },
                         success: function(response) {
                             var data = JSON.parse(response);

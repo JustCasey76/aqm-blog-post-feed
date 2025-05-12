@@ -1,5 +1,9 @@
 # AQM Blog Post Feed Changelog
 
+## 1.0.42 - May 12, 2025
+- Added feature to exclude the current post when the module is displayed on a single post page
+- Improved AJAX handler to maintain this behavior when loading more posts
+
 ## 1.0.41 - May 12, 2025
 - Improved mobile experience: background images now cover the entire post on mobile devices
 - Added responsive styles with media queries for better mobile display
