@@ -1,5 +1,9 @@
 # AQM Blog Post Feed Changelog
 
+## 1.0.41 - May 12, 2025
+- Improved mobile experience: background images now cover the entire post on mobile devices
+- Added responsive styles with media queries for better mobile display
+
 ## 1.0.40 - May 9, 2025
 - Improved Load More button visibility: now only shows if there are more posts than the initial load amount
 - Ensured consistent background image sizing in AJAX-loaded content

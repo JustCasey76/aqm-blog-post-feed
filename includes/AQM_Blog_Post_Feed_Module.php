@@ -610,6 +610,16 @@ $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="trans
                 background-color: ' . esc_attr($read_more_hover_bg_color) . ' !important;
                 color: ' . esc_attr($read_more_hover_color) . ';
             }
+            
+            /* Mobile styles for background image */
+            @media (max-width: 767px) {
+                .aqm-post-item {
+                    background-size: cover !important;
+                }
+                .aqm-post-item:hover {
+                    background-size: cover !important;
+                }
+            }
 			 .aqm-post-meta {
 			    padding: 4px 0 14px 0 !important;
 			}
