@@ -185,6 +185,26 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                 'type'            => 'color',
                 'default'         => '#ffffff',
             ),
+            'show_meta_author' => array(
+                'label'           => esc_html__('Show Author', 'aqm-blog-post-feed'),
+                'type'            => 'yes_no_button',
+                'options'         => array(
+                    'on'  => esc_html__('Yes', 'aqm-blog-post-feed'),
+                    'off' => esc_html__('No', 'aqm-blog-post-feed'),
+                ),
+                'default'         => 'on',
+                'description'     => esc_html__('Toggle to show or hide the author in post meta.', 'aqm-blog-post-feed'),
+            ),
+            'show_meta_date' => array(
+                'label'           => esc_html__('Show Date', 'aqm-blog-post-feed'),
+                'type'            => 'yes_no_button',
+                'options'         => array(
+                    'on'  => esc_html__('Yes', 'aqm-blog-post-feed'),
+                    'off' => esc_html__('No', 'aqm-blog-post-feed'),
+                ),
+                'default'         => 'on',
+                'description'     => esc_html__('Toggle to show or hide the date in post meta.', 'aqm-blog-post-feed'),
+            ),
             // Updated field for excerpt word limit with up/down arrows (range type)
             'excerpt_limit' => array(
                 'label'           => esc_html__('Excerpt Word Limit', 'aqm-blog-post-feed'),
@@ -375,6 +395,8 @@ public function render($attrs, $render_slug, $content = null) {
         $meta_font_size = $this->props['meta_font_size'];
         $meta_line_height = $this->props['meta_line_height'];
         $meta_color = isset($this->props['meta_color']) ? $this->props['meta_color'] : '#ffffff';
+        $show_meta_author = isset($this->props['show_meta_author']) ? $this->props['show_meta_author'] : 'on';
+        $show_meta_date = isset($this->props['show_meta_date']) ? $this->props['show_meta_date'] : 'on';
         $read_more_padding = $this->format_padding($this->props['read_more_padding']);
         $read_more_border_radius = $this->props['read_more_border_radius'];
         $read_more_color = $this->props['read_more_color'];
@@ -466,10 +488,26 @@ public function render($attrs, $render_slug, $content = null) {
                 $output .= '<h3 class="aqm-post-title" style="color:' . esc_attr($title_color) . '; font-size:' . esc_attr($title_font_size) . 'px; line-height:' . esc_attr($title_line_height) . 'em; margin: 0;' . ($title_font_family ? ' font-family:' . esc_attr($title_font_family) . ';' : '') . '">' . get_the_title() . '</h3>';
                 
                 // Meta (author and date with icons)
-                $output .= '<p class="aqm-post-meta" style="color:' . esc_attr($meta_color) . '; font-size:' . esc_attr($meta_font_size) . 'px; line-height:' . esc_attr($meta_line_height) . 'em;">';
-                $output .= '<i class="fas fa-user"></i> ' . esc_html($author) . ' &nbsp;|&nbsp; ';
-                $output .= '<i class="fas fa-calendar-alt"></i> ' . esc_html($date);
-                $output .= '</p>';
+                // Only display meta section if at least one of author or date is enabled
+                if ($show_meta_author === 'on' || $show_meta_date === 'on') {
+                    $output .= '<p class="aqm-post-meta" style="color:' . esc_attr($meta_color) . '; font-size:' . esc_attr($meta_font_size) . 'px; line-height:' . esc_attr($meta_line_height) . 'em;">';
+                    
+                    // Show author if enabled
+                    if ($show_meta_author === 'on') {
+                        $output .= '<i class="fas fa-user"></i> ' . esc_html($author);
+                        // Only add separator if both author and date are shown
+                        if ($show_meta_date === 'on') {
+                            $output .= ' &nbsp;|&nbsp; ';
+                        }
+                    }
+                    
+                    // Show date if enabled
+                    if ($show_meta_date === 'on') {
+                        $output .= '<i class="fas fa-calendar-alt"></i> ' . esc_html($date);
+                    }
+                    
+                    $output .= '</p>';
+                }
                 
                 // Excerpt with line height control and word limit from content
 $output .= '<p class="aqm-post-excerpt" style="color:' . esc_attr($content_color) . '; font-size:' . esc_attr($content_font_size) . 'px; line-height:' . esc_attr($content_line_height) . 'em;' . ($content_font_family ? ' font-family:' . esc_attr($content_font_family) . ';' : '') . '">' . wp_trim_words(has_excerpt() ? get_the_excerpt() : get_the_content(), $excerpt_limit, '...') . '</p>';
@@ -557,6 +595,8 @@ $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="trans
                             meta_font_size: ' . $meta_font_size . ',
                             meta_line_height: ' . $meta_line_height . ',
                             meta_color: "' . $meta_color . '",
+                            show_meta_author: "' . $show_meta_author . '",
+                            show_meta_date: "' . $show_meta_date . '",
                             read_more_padding: "' . $read_more_padding . '",
                             read_more_border_radius: ' . $read_more_border_radius . ',
                             read_more_color: "' . $read_more_color . '",

@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 1.0.42
+Version: 1.0.43
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 GitHub Plugin URI: https://github.com/JustCasey76/aqm-blog-post-feed
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Version for cache busting
-define('AQM_BLOG_POST_FEED_VERSION', '1.0.42');
+define('AQM_BLOG_POST_FEED_VERSION', '1.0.43');
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
@@ -343,6 +343,8 @@ function aqm_load_more_posts_handler() {
     $meta_font_size = isset($_POST['meta_font_size']) ? intval($_POST['meta_font_size']) : 12;
     $meta_line_height = isset($_POST['meta_line_height']) ? (float)$_POST['meta_line_height'] : 1.4;
     $meta_color = isset($_POST['meta_color']) ? sanitize_text_field($_POST['meta_color']) : '#ffffff';
+    $show_meta_author = isset($_POST['show_meta_author']) ? sanitize_text_field($_POST['show_meta_author']) : 'on';
+    $show_meta_date = isset($_POST['show_meta_date']) ? sanitize_text_field($_POST['show_meta_date']) : 'on';
     $read_more_padding = isset($_POST['read_more_padding']) ? sanitize_text_field($_POST['read_more_padding']) : '10px 20px 10px 20px';
     $read_more_border_radius = isset($_POST['read_more_border_radius']) ? intval($_POST['read_more_border_radius']) : 5;
     $read_more_color = isset($_POST['read_more_color']) ? sanitize_text_field($_POST['read_more_color']) : '#ffffff';
@@ -398,10 +400,26 @@ function aqm_load_more_posts_handler() {
             $html .= '<h3 class="aqm-post-title" style="color:' . esc_attr($title_color) . '; font-size:' . esc_attr($title_font_size) . 'px; line-height:' . esc_attr($title_line_height) . 'em; margin: 0;">' . get_the_title() . '</h3>';
             
             // Meta (author and date with icons)
-            $html .= '<p class="aqm-post-meta" style="color:' . esc_attr($meta_color) . '; font-size:' . esc_attr($meta_font_size) . 'px; line-height:' . esc_attr($meta_line_height) . 'em;">';
-            $html .= '<i class="fas fa-user"></i> ' . esc_html($author) . ' &nbsp;|&nbsp; ';
-            $html .= '<i class="fas fa-calendar-alt"></i> ' . esc_html($date);
-            $html .= '</p>';
+            // Only display meta section if at least one of author or date is enabled
+            if ($show_meta_author === 'on' || $show_meta_date === 'on') {
+                $html .= '<p class="aqm-post-meta" style="color:' . esc_attr($meta_color) . '; font-size:' . esc_attr($meta_font_size) . 'px; line-height:' . esc_attr($meta_line_height) . 'em;">';
+                
+                // Show author if enabled
+                if ($show_meta_author === 'on') {
+                    $html .= '<i class="fas fa-user"></i> ' . esc_html($author);
+                    // Only add separator if both author and date are shown
+                    if ($show_meta_date === 'on') {
+                        $html .= ' &nbsp;|&nbsp; ';
+                    }
+                }
+                
+                // Show date if enabled
+                if ($show_meta_date === 'on') {
+                    $html .= '<i class="fas fa-calendar-alt"></i> ' . esc_html($date);
+                }
+                
+                $html .= '</p>';
+            }
             
             // Excerpt with line height control and word limit from content
             $html .= '<p class="aqm-post-excerpt" style="color:' . esc_attr($content_color) . '; font-size:' . esc_attr($content_font_size) . 'px; line-height:' . esc_attr($content_line_height) . 'em;">' . wp_trim_words(has_excerpt() ? get_the_excerpt() : get_the_content(), $excerpt_limit, '...') . '</p>';

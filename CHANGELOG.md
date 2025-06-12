@@ -1,5 +1,10 @@
 # AQM Blog Post Feed Changelog
 
+## 1.0.43 - June 12, 2025
+- Added toggle options for showing/hiding author in post meta
+- Added toggle options for showing/hiding date in post meta
+- Improved meta display to handle different combinations of visible elements
+
 ## 1.0.42 - May 12, 2025
 - Added feature to exclude the current post when the module is displayed on a single post page
 - Improved AJAX handler to maintain this behavior when loading more posts
