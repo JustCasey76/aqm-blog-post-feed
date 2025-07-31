@@ -515,7 +515,7 @@ $output .= '<p class="aqm-post-excerpt" style="color:' . esc_attr($content_color
 
                 
 // Read More Button with padding, border-radius, and inline-block styling, with uppercase toggle
-$output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="transition: background-color 0.5s ease, color 0.5s ease; color:' . esc_attr($read_more_color) . '; background-color:' . esc_attr($read_more_bg_color) . '; padding:' . esc_attr($read_more_padding) . '; border-radius:' . esc_attr($read_more_border_radius) . 'px; display: inline-block; margin-top: 20px; font-size:' . esc_attr($read_more_font_size) . 'px; text-decoration: none; align-self: flex-start;' . $uppercase_style . '" onmouseover="this.style.color=\'' . esc_attr($read_more_hover_color) . '\'; this.style.backgroundColor=\'' . esc_attr($read_more_hover_bg_color) . '\';" onmouseout="this.style.color=\'' . esc_attr($read_more_color) . '\'; this.style.backgroundColor=\'' . esc_attr($read_more_bg_color) . '\';">' . esc_html($read_more_text) . '</a>';
+$output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="transition: background-color 0.5s ease, color 0.5s ease; color:' . esc_attr($read_more_color) . '; background-color:' . esc_attr($read_more_bg_color) . '; padding:' . esc_attr($read_more_padding) . '; border-radius:' . esc_attr($read_more_border_radius) . 'px; display: inline-block; margin-top: 20px; font-size:' . esc_attr($read_more_font_size) . 'px; text-decoration: none; align-self: flex-start;' . $uppercase_style . '">' . esc_html($read_more_text) . '</a>';
 
                 
                 $output .= '</div>'; // Close aqm-post-content
@@ -658,7 +658,7 @@ $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="trans
             }
             .aqm-post-item .aqm-read-more:hover {
                 background-color: ' . esc_attr($read_more_hover_bg_color) . ' !important;
-                color: ' . esc_attr($read_more_hover_color) . ';
+                color: ' . esc_attr($read_more_hover_color) . ' !important;
             }
             
             /* Mobile styles for background image */
