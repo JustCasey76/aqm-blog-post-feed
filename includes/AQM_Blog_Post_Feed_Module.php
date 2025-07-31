@@ -17,6 +17,16 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
 
     public function get_fields() {
         return array(
+            'layout_type' => array(
+                'label'           => esc_html__('Layout Type', 'aqm-blog-post-feed'),
+                'type'            => 'select',
+                'options'         => array(
+                    'grid' => esc_html__('Grid View', 'aqm-blog-post-feed'),
+                    'list' => esc_html__('List View', 'aqm-blog-post-feed'),
+                ),
+                'default'         => 'grid',
+                'description'     => esc_html__('Choose between grid view (with images and content) or list view (titles only).', 'aqm-blog-post-feed'),
+            ),
             'columns' => array(
                 'label'           => esc_html__('Number of Columns (Desktop)', 'aqm-blog-post-feed'),
                 'type'            => 'range',
@@ -159,6 +169,44 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                     'step' => 1,
                 ),
                 'description'     => esc_html__('Set the border radius for the post items.', 'aqm-blog-post-feed'),
+            ),
+            'list_title_font_size' => array(
+                'label'           => esc_html__('List Title Font Size (px)', 'aqm-blog-post-feed'),
+                'type'            => 'range',
+                'default'         => 16,
+                'options'         => array(
+                    'min'  => 12,
+                    'max'  => 30,
+                    'step' => 1,
+                ),
+                'show_if'         => array('layout_type' => 'list'),
+                'description'     => esc_html__('Font size for post titles in list view.', 'aqm-blog-post-feed'),
+            ),
+            'list_title_color' => array(
+                'label'           => esc_html__('List Title Color', 'aqm-blog-post-feed'),
+                'type'            => 'color',
+                'default'         => '#333333',
+                'show_if'         => array('layout_type' => 'list'),
+                'description'     => esc_html__('Color for post titles in list view.', 'aqm-blog-post-feed'),
+            ),
+            'list_title_hover_color' => array(
+                'label'           => esc_html__('List Title Hover Color', 'aqm-blog-post-feed'),
+                'type'            => 'color',
+                'default'         => '#0073e6',
+                'show_if'         => array('layout_type' => 'list'),
+                'description'     => esc_html__('Hover color for post titles in list view.', 'aqm-blog-post-feed'),
+            ),
+            'list_item_spacing' => array(
+                'label'           => esc_html__('List Item Spacing (px)', 'aqm-blog-post-feed'),
+                'type'            => 'range',
+                'default'         => 10,
+                'options'         => array(
+                    'min'  => 5,
+                    'max'  => 30,
+                    'step' => 1,
+                ),
+                'show_if'         => array('layout_type' => 'list'),
+                'description'     => esc_html__('Spacing between list items.', 'aqm-blog-post-feed'),
             ),
             'meta_font_size' => array(
                 'label'           => esc_html__('Meta Font Size (px)', 'aqm-blog-post-feed'),
@@ -392,6 +440,15 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
     }
 
 public function render($attrs, $render_slug, $content = null) {
+        // Get layout type
+        $layout_type = isset($this->props['layout_type']) ? $this->props['layout_type'] : 'grid';
+        
+        // List view specific variables
+        $list_title_font_size = isset($this->props['list_title_font_size']) ? $this->props['list_title_font_size'] : 16;
+        $list_title_color = isset($this->props['list_title_color']) ? $this->props['list_title_color'] : '#333333';
+        $list_title_hover_color = isset($this->props['list_title_hover_color']) ? $this->props['list_title_hover_color'] : '#0073e6';
+        $list_item_spacing = isset($this->props['list_item_spacing']) ? $this->props['list_item_spacing'] : 10;
+        
         $columns = $this->props['columns'];
         $columns_tablet = $this->props['columns_tablet'];
         $columns_mobile = $this->props['columns_mobile'];
@@ -532,15 +589,27 @@ public function render($attrs, $render_slug, $content = null) {
         // Generate a unique ID for this instance
         $module_id = 'aqm-blog-' . wp_rand(1000, 9999);
         
-        // Use CSS Grid layout
-        $output = '<div id="' . $module_id . '" class="aqm-post-feed" style="display: grid; grid-template-columns: repeat(' . esc_attr($columns) . ', 1fr); gap: ' . esc_attr($spacing) . 'px;">';
+        // Container based on layout type
+        if ($layout_type === 'list') {
+            $output = '<div id="' . $module_id . '" class="aqm-post-feed aqm-list-view" style="display: block;">';
+        } else {
+            $output = '<div id="' . $module_id . '" class="aqm-post-feed aqm-grid-view" style="display: grid; grid-template-columns: repeat(' . esc_attr($columns) . ', 1fr); gap: ' . esc_attr($spacing) . 'px;">';
+        }
 
         if ($posts->have_posts()) {
             while ($posts->have_posts()) {
                 $posts->the_post();
-                $author = get_the_author();
-                $date = get_the_date();
-                $thumbnail_url = get_the_post_thumbnail_url(null, 'large');  // Change 'medium' to your preferred size, such as 'thumbnail', 'medium', 'large', or a custom size.
+                
+                if ($layout_type === 'list') {
+                    // List view - only show title as link
+                    $output .= '<div class="aqm-list-item" style="margin-bottom: ' . esc_attr($list_item_spacing) . 'px;">';
+                    $output .= '<a href="' . get_permalink() . '" class="aqm-list-title" style="color: ' . esc_attr($list_title_color) . '; font-size: ' . esc_attr($list_title_font_size) . 'px; text-decoration: none; display: block;">' . get_the_title() . '</a>';
+                    $output .= '</div>';
+                } else {
+                    // Grid view - existing functionality
+                    $author = get_the_author();
+                    $date = get_the_date();
+                    $thumbnail_url = get_the_post_thumbnail_url(null, 'large');
 
 
                 // Post item with background image and zoom effect on hover
@@ -591,6 +660,7 @@ $output .= '<p class="aqm-post-excerpt" style="color:' . esc_attr($content_color
 
                 
                 $output .= '</div>'; // Close aqm-post-item
+                } // Close grid view else
             }
         }
 
@@ -678,6 +748,11 @@ $output .= '<p class="aqm-post-excerpt" style="color:' . esc_attr($content_color
                             read_more_uppercase: "' . $read_more_uppercase . '",
                             category_filter: "' . $category_filter . '",
                             exclude_archived: "' . $exclude_archived . '",
+                            layout_type: "' . $layout_type . '",
+                            list_title_font_size: ' . $list_title_font_size . ',
+                            list_title_color: "' . $list_title_color . '",
+                            list_title_hover_color: "' . $list_title_hover_color . '",
+                            list_item_spacing: ' . $list_item_spacing . ',
                             current_post_id: ' . $current_post_id . '
                         },
                         success: function(response) {
@@ -734,6 +809,14 @@ $output .= '<p class="aqm-post-excerpt" style="color:' . esc_attr($content_color
             #' . $module_id . '.aqm-post-feed .aqm-post-item .aqm-post-content .aqm-read-more:hover {
                 background-color: ' . esc_attr($read_more_hover_bg_color) . ' !important;
                 color: ' . esc_attr($read_more_hover_color) . ' !important;
+            }
+            
+            /* List view styles */
+            #' . $module_id . '.aqm-list-view .aqm-list-title {
+                transition: color 0.3s ease;
+            }
+            #' . $module_id . '.aqm-list-view .aqm-list-title:hover {
+                color: ' . esc_attr($list_title_hover_color) . ' !important;
             }
             
             /* Mobile styles for background image */

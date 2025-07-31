@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 1.0.48
+Version: 1.0.49
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 GitHub Plugin URI: https://github.com/JustCasey76/aqm-blog-post-feed
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Version for cache busting
-define('AQM_BLOG_POST_FEED_VERSION', '1.0.48');
+define('AQM_BLOG_POST_FEED_VERSION', '1.0.49');
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
@@ -363,6 +363,13 @@ function aqm_load_more_posts_handler() {
     $category_filter = isset($_POST['category_filter']) ? sanitize_text_field($_POST['category_filter']) : '';
     $exclude_archived = isset($_POST['exclude_archived']) ? sanitize_text_field($_POST['exclude_archived']) : 'off';
     
+    // Get layout parameters
+    $layout_type = isset($_POST['layout_type']) ? sanitize_text_field($_POST['layout_type']) : 'grid';
+    $list_title_font_size = isset($_POST['list_title_font_size']) ? intval($_POST['list_title_font_size']) : 16;
+    $list_title_color = isset($_POST['list_title_color']) ? sanitize_text_field($_POST['list_title_color']) : '#333333';
+    $list_title_hover_color = isset($_POST['list_title_hover_color']) ? sanitize_text_field($_POST['list_title_hover_color']) : '#0073e6';
+    $list_item_spacing = isset($_POST['list_item_spacing']) ? intval($_POST['list_item_spacing']) : 10;
+    
     // Apply uppercase style based on the setting
     $uppercase_style = $read_more_uppercase === 'on' ? 'text-transform: uppercase;' : '';
     
@@ -433,12 +440,20 @@ function aqm_load_more_posts_handler() {
     if ($posts->have_posts()) {
         while ($posts->have_posts()) {
             $posts->the_post();
-            $author = get_the_author();
-            $date = get_the_date();
-            $thumbnail_url = get_the_post_thumbnail_url(null, 'large');
+            
+            if ($layout_type === 'list') {
+                // List view - only show title as link
+                $html .= '<div class="aqm-list-item" style="margin-bottom: ' . esc_attr($list_item_spacing) . 'px;">';
+                $html .= '<a href="' . get_permalink() . '" class="aqm-list-title" style="color: ' . esc_attr($list_title_color) . '; font-size: ' . esc_attr($list_title_font_size) . 'px; text-decoration: none; display: block;">' . get_the_title() . '</a>';
+                $html .= '</div>';
+            } else {
+                // Grid view - existing functionality
+                $author = get_the_author();
+                $date = get_the_date();
+                $thumbnail_url = get_the_post_thumbnail_url(null, 'large');
 
-            // Post item with background image
-            $html .= '<div class="aqm-post-item" style="border-radius: ' . esc_attr($item_border_radius) . 'px; overflow: hidden; position: relative; min-height: 300px; background-image: url(' . esc_url($thumbnail_url) . '); background-size: 125%; background-position: center; transition: background-size 0.5s ease;">';
+                // Post item with background image
+                $html .= '<div class="aqm-post-item" style="border-radius: ' . esc_attr($item_border_radius) . 'px; overflow: hidden; position: relative; min-height: 300px; background-image: url(' . esc_url($thumbnail_url) . '); background-size: 125%; background-position: center; transition: background-size 0.5s ease;">';
             
             // Full height overlay
             $html .= '<div class="aqm-post-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; transition: background-color 0.3s ease;"></div>';
@@ -477,6 +492,7 @@ function aqm_load_more_posts_handler() {
             
             $html .= '</div>'; // Close aqm-post-content
             $html .= '</div>'; // Close aqm-post-item
+            } // Close grid view else
         }
         
         // Check if there are more posts to load
