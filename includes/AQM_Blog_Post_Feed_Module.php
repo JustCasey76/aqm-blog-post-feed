@@ -356,6 +356,21 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                 'default'         => '#ffffff',
                 'show_if'         => array('enable_load_more' => 'on'),
             ),
+            'category_filter' => array(
+                'label'           => esc_html__('Filter by Categories', 'aqm-blog-post-feed'),
+                'type'            => 'categories',
+                'description'     => esc_html__('Select specific categories to display posts from. Leave empty to show posts from all categories.', 'aqm-blog-post-feed'),
+            ),
+            'exclude_archived' => array(
+                'label'           => esc_html__('Exclude Archived Posts', 'aqm-blog-post-feed'),
+                'type'            => 'yes_no_button',
+                'options'         => array(
+                    'on'  => esc_html__('Yes', 'aqm-blog-post-feed'),
+                    'off' => esc_html__('No', 'aqm-blog-post-feed'),
+                ),
+                'default'         => 'off',
+                'description'     => esc_html__('Toggle to exclude posts from archived categories or with archived status.', 'aqm-blog-post-feed'),
+            ),
             'sort_order' => array(
                 'label'           => esc_html__('Sort Order', 'aqm-blog-post-feed'),
                 'type'            => 'select',
@@ -425,6 +440,10 @@ public function render($attrs, $render_slug, $content = null) {
         // Apply uppercase style based on the setting
         $uppercase_style = $read_more_uppercase === 'on' ? 'text-transform: uppercase;' : '';
 
+        // Get filtering settings
+        $category_filter = isset($this->props['category_filter']) ? $this->props['category_filter'] : '';
+        $exclude_archived = isset($this->props['exclude_archived']) ? $this->props['exclude_archived'] : 'off';
+        
         // Get sort order from module settings
         $sort_order = isset($this->props['sort_order']) ? $this->props['sort_order'] : 'date_desc';
         
@@ -458,6 +477,50 @@ public function render($attrs, $render_slug, $content = null) {
             'orderby' => $orderby,
             'order' => $order,
         );
+        
+        // Add category filtering if specified
+        if (!empty($category_filter)) {
+            $category_ids = explode(',', $category_filter);
+            $category_ids = array_map('intval', $category_ids);
+            $category_ids = array_filter($category_ids); // Remove any invalid IDs
+            
+            if (!empty($category_ids)) {
+                $args['category__in'] = $category_ids;
+            }
+        }
+        
+        // Exclude archived posts if enabled
+        if ($exclude_archived === 'on') {
+            // Get categories with 'archive' in the name or slug
+            $archived_categories = get_categories(array(
+                'hide_empty' => false,
+                'name__like' => 'archive'
+            ));
+            
+            // Also check for categories with 'archived' in slug
+            $archived_categories_slug = get_categories(array(
+                'hide_empty' => false,
+                'slug__like' => 'archive'
+            ));
+            
+            $archived_cat_ids = array();
+            foreach ($archived_categories as $cat) {
+                $archived_cat_ids[] = $cat->term_id;
+            }
+            foreach ($archived_categories_slug as $cat) {
+                $archived_cat_ids[] = $cat->term_id;
+            }
+            
+            // Remove duplicates
+            $archived_cat_ids = array_unique($archived_cat_ids);
+            
+            if (!empty($archived_cat_ids)) {
+                $args['category__not_in'] = $archived_cat_ids;
+            }
+            
+            // Also exclude posts with 'draft' or 'private' status
+            $args['post_status'] = 'publish';
+        }
         
         // Exclude current post if we're on a single post page
         if (is_single()) {
@@ -613,6 +676,8 @@ $output .= '<p class="aqm-post-excerpt" style="color:' . esc_attr($content_color
                             excerpt_limit: ' . $excerpt_limit . ',
                             read_more_text: "' . $read_more_text . '",
                             read_more_uppercase: "' . $read_more_uppercase . '",
+                            category_filter: "' . $category_filter . '",
+                            exclude_archived: "' . $exclude_archived . '",
                             current_post_id: ' . $current_post_id . '
                         },
                         success: function(response) {

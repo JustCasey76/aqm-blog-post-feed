@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 1.0.47
+Version: 1.0.48
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 GitHub Plugin URI: https://github.com/JustCasey76/aqm-blog-post-feed
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Version for cache busting
-define('AQM_BLOG_POST_FEED_VERSION', '1.0.47');
+define('AQM_BLOG_POST_FEED_VERSION', '1.0.48');
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
@@ -359,6 +359,10 @@ function aqm_load_more_posts_handler() {
     $background_size = 125;
     $background_zoom = 140;
     
+    // Get filtering parameters
+    $category_filter = isset($_POST['category_filter']) ? sanitize_text_field($_POST['category_filter']) : '';
+    $exclude_archived = isset($_POST['exclude_archived']) ? sanitize_text_field($_POST['exclude_archived']) : 'off';
+    
     // Apply uppercase style based on the setting
     $uppercase_style = $read_more_uppercase === 'on' ? 'text-transform: uppercase;' : '';
     
@@ -370,6 +374,50 @@ function aqm_load_more_posts_handler() {
         'order' => $order,
         'paged' => $page,
     );
+    
+    // Add category filtering if specified
+    if (!empty($category_filter)) {
+        $category_ids = explode(',', $category_filter);
+        $category_ids = array_map('intval', $category_ids);
+        $category_ids = array_filter($category_ids); // Remove any invalid IDs
+        
+        if (!empty($category_ids)) {
+            $args['category__in'] = $category_ids;
+        }
+    }
+    
+    // Exclude archived posts if enabled
+    if ($exclude_archived === 'on') {
+        // Get categories with 'archive' in the name or slug
+        $archived_categories = get_categories(array(
+            'hide_empty' => false,
+            'name__like' => 'archive'
+        ));
+        
+        // Also check for categories with 'archived' in slug
+        $archived_categories_slug = get_categories(array(
+            'hide_empty' => false,
+            'slug__like' => 'archive'
+        ));
+        
+        $archived_cat_ids = array();
+        foreach ($archived_categories as $cat) {
+            $archived_cat_ids[] = $cat->term_id;
+        }
+        foreach ($archived_categories_slug as $cat) {
+            $archived_cat_ids[] = $cat->term_id;
+        }
+        
+        // Remove duplicates
+        $archived_cat_ids = array_unique($archived_cat_ids);
+        
+        if (!empty($archived_cat_ids)) {
+            $args['category__not_in'] = $archived_cat_ids;
+        }
+        
+        // Also exclude posts with 'draft' or 'private' status
+        $args['post_status'] = 'publish';
+    }
     
     // Exclude current post if we're on a single post page
     if (isset($_POST['current_post_id']) && !empty($_POST['current_post_id'])) {
