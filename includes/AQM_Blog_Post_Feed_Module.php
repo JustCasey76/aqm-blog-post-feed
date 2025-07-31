@@ -730,13 +730,20 @@ public function render($attrs, $render_slug, $content = null) {
 
 
                 // Post item with background image and zoom effect on hover
-                $output .= '<div class="aqm-post-item" style="border-radius: ' . esc_attr($item_border_radius) . 'px; overflow: hidden; position: relative; min-height: 300px; background-image: url(' . esc_url($thumbnail_url) . '); background-size: ' . esc_attr($background_size) . '%; background-position: center; transition: background-size 0.5s ease;">';
+                // Adjust height based on read more button positioning
+                $post_min_height = ($read_more_position_bottom === 'off') ? 'auto' : '300px';
+                $post_height_style = ($read_more_position_bottom === 'off') ? 'height: auto;' : 'min-height: 300px;';
+                
+                $output .= '<div class="aqm-post-item" style="border-radius: ' . esc_attr($item_border_radius) . 'px; overflow: hidden; position: relative; ' . $post_height_style . ' background-image: url(' . esc_url($thumbnail_url) . '); background-size: ' . esc_attr($background_size) . '%; background-position: center; transition: background-size 0.5s ease;">';
                 
                 // Full height overlay
                 $output .= '<div class="aqm-post-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; transition: background-color 0.3s ease;"></div>';
                 
                 // Full height post content with padding control
-                $output .= '<div class="aqm-post-content" style="position: relative; z-index: 2; padding:' . esc_attr($content_padding) . '; color: #fff; display: flex; flex-direction: column; justify-content: flex-end;">';
+                // Adjust flex behavior based on read more button positioning
+                $content_flex_style = ($read_more_position_bottom === 'off') ? 'display: flex; flex-direction: column; justify-content: flex-start;' : 'display: flex; flex-direction: column; justify-content: flex-end;';
+                
+                $output .= '<div class="aqm-post-content" style="position: relative; z-index: 2; padding:' . esc_attr($content_padding) . '; color: #fff; ' . $content_flex_style . '">';
                 $output .= '<h3 class="aqm-post-title" style="color:' . esc_attr($title_color) . '; font-size:' . esc_attr($title_font_size) . 'px; line-height:' . esc_attr($title_line_height) . 'em; margin: 0;' . ($title_font_family ? ' font-family:' . esc_attr($title_font_family) . ';' : '') . '">' . get_the_title() . '</h3>';
                 
                 // Meta (author and date with icons)
@@ -762,18 +769,24 @@ public function render($attrs, $render_slug, $content = null) {
                 }
                 
                 // Excerpt with line height control and word limit from content
-$output .= '<p class="aqm-post-excerpt" style="color:' . esc_attr($content_color) . '; font-size:' . esc_attr($content_font_size) . 'px; line-height:' . esc_attr($content_line_height) . 'em;' . ($content_font_family ? ' font-family:' . esc_attr($content_font_family) . ';' : '') . '">' . wp_trim_words(has_excerpt() ? get_the_excerpt() : get_the_content(), $excerpt_limit, '...') . '</p>';
+                $output .= '<p class="aqm-post-excerpt" style="color:' . esc_attr($content_color) . '; font-size:' . esc_attr($content_font_size) . 'px; line-height:' . esc_attr($content_line_height) . 'em;' . ($content_font_family ? ' font-family:' . esc_attr($content_font_family) . ';' : '') . '">' . wp_trim_words(has_excerpt() ? get_the_excerpt() : get_the_content(), $excerpt_limit, '...') . '</p>';
 
-
+                // Read More Button - conditional positioning
+                if ($read_more_position_bottom === 'off') {
+                    // Inline positioning - button appears under excerpt
+                    $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="transition: background-color 0.5s ease, color 0.5s ease; color:' . esc_attr($read_more_color) . '; background-color:' . esc_attr($read_more_bg_color) . '; padding:' . esc_attr($read_more_padding) . '; border-radius:' . esc_attr($read_more_border_radius) . 'px; display: inline-block; margin-top: 15px; font-size:' . esc_attr($read_more_font_size) . 'px; text-decoration: none;' . $uppercase_style . '">' . esc_html($read_more_text) . '</a>';
+                }
                 
                 $output .= '</div>'; // Close aqm-post-content
                 
-                // Read More Button positioned at lower left with same padding as content
-                $content_padding_values = explode(' ', $content_padding);
-                $bottom_padding = isset($content_padding_values[2]) ? $content_padding_values[2] : (isset($content_padding_values[0]) ? $content_padding_values[0] : '20px');
-                $left_padding = isset($content_padding_values[3]) ? $content_padding_values[3] : (isset($content_padding_values[1]) ? $content_padding_values[1] : (isset($content_padding_values[0]) ? $content_padding_values[0] : '20px'));
-                
-                $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="position: absolute; bottom: ' . esc_attr($bottom_padding) . '; left: ' . esc_attr($left_padding) . '; z-index: 3; transition: background-color 0.5s ease, color 0.5s ease; color:' . esc_attr($read_more_color) . '; background-color:' . esc_attr($read_more_bg_color) . '; padding:' . esc_attr($read_more_padding) . '; border-radius:' . esc_attr($read_more_border_radius) . 'px; display: inline-block; font-size:' . esc_attr($read_more_font_size) . 'px; text-decoration: none;' . $uppercase_style . '">' . esc_html($read_more_text) . '</a>';
+                // Bottom left positioned read more button (when enabled)
+                if ($read_more_position_bottom === 'on') {
+                    $content_padding_values = explode(' ', $content_padding);
+                    $bottom_padding = isset($content_padding_values[2]) ? $content_padding_values[2] : (isset($content_padding_values[0]) ? $content_padding_values[0] : '20px');
+                    $left_padding = isset($content_padding_values[3]) ? $content_padding_values[3] : (isset($content_padding_values[1]) ? $content_padding_values[1] : (isset($content_padding_values[0]) ? $content_padding_values[0] : '20px'));
+                    
+                    $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="position: absolute; bottom: ' . esc_attr($bottom_padding) . '; left: ' . esc_attr($left_padding) . '; z-index: 3; transition: background-color 0.5s ease, color 0.5s ease; color:' . esc_attr($read_more_color) . '; background-color:' . esc_attr($read_more_bg_color) . '; padding:' . esc_attr($read_more_padding) . '; border-radius:' . esc_attr($read_more_border_radius) . 'px; display: inline-block; font-size:' . esc_attr($read_more_font_size) . 'px; text-decoration: none;' . $uppercase_style . '">' . esc_html($read_more_text) . '</a>';
+                }
 
                 
                 $output .= '</div>'; // Close aqm-post-item
@@ -863,6 +876,7 @@ $output .= '<p class="aqm-post-excerpt" style="color:' . esc_attr($content_color
                             excerpt_limit: ' . $excerpt_limit . ',
                             read_more_text: "' . $read_more_text . '",
                             read_more_uppercase: "' . $read_more_uppercase . '",
+                            read_more_position_bottom: "' . $read_more_position_bottom . '",
                             category_filter: "' . $category_filter . '",
                             exclude_archived: "' . $exclude_archived . '",
                             layout_type: "' . $layout_type . '",

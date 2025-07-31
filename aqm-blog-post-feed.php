@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 1.0.51
+Version: 1.0.52
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 GitHub Plugin URI: https://github.com/JustCasey76/aqm-blog-post-feed
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Version for cache busting
-define('AQM_BLOG_POST_FEED_VERSION', '1.0.51');
+define('AQM_BLOG_POST_FEED_VERSION', '1.0.52');
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
@@ -355,6 +355,7 @@ function aqm_load_more_posts_handler() {
     $excerpt_limit = isset($_POST['excerpt_limit']) ? intval($_POST['excerpt_limit']) : 60;
     $read_more_text = isset($_POST['read_more_text']) ? sanitize_text_field($_POST['read_more_text']) : 'Read More';
     $read_more_uppercase = isset($_POST['read_more_uppercase']) ? sanitize_text_field($_POST['read_more_uppercase']) : 'off';
+    $read_more_position_bottom = isset($_POST['read_more_position_bottom']) ? sanitize_text_field($_POST['read_more_position_bottom']) : 'on';
     // Background sizes are now hardcoded to 125% default and 140% on hover
     $background_size = 125;
     $background_zoom = 140;
@@ -480,13 +481,19 @@ function aqm_load_more_posts_handler() {
                 $thumbnail_url = get_the_post_thumbnail_url(null, 'large');
 
                 // Post item with background image
-                $html .= '<div class="aqm-post-item" style="border-radius: ' . esc_attr($item_border_radius) . 'px; overflow: hidden; position: relative; min-height: 300px; background-image: url(' . esc_url($thumbnail_url) . '); background-size: 125%; background-position: center; transition: background-size 0.5s ease;">';
+                // Adjust height based on read more button positioning
+                $post_height_style = ($read_more_position_bottom === 'off') ? 'height: auto;' : 'min-height: 300px;';
+                
+                $html .= '<div class="aqm-post-item" style="border-radius: ' . esc_attr($item_border_radius) . 'px; overflow: hidden; position: relative; ' . $post_height_style . ' background-image: url(' . esc_url($thumbnail_url) . '); background-size: 125%; background-position: center; transition: background-size 0.5s ease;">';
             
             // Full height overlay
             $html .= '<div class="aqm-post-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; transition: background-color 0.3s ease;"></div>';
             
             // Full height post content with padding control
-            $html .= '<div class="aqm-post-content" style="position: relative; z-index: 2; padding:' . esc_attr($content_padding) . '; color: #fff; display: flex; flex-direction: column; justify-content: flex-end;">';
+            // Adjust flex behavior based on read more button positioning
+            $content_flex_style = ($read_more_position_bottom === 'off') ? 'display: flex; flex-direction: column; justify-content: flex-start;' : 'display: flex; flex-direction: column; justify-content: flex-end;';
+            
+            $html .= '<div class="aqm-post-content" style="position: relative; z-index: 2; padding:' . esc_attr($content_padding) . '; color: #fff; ' . $content_flex_style . '">';
             $html .= '<h3 class="aqm-post-title" style="color:' . esc_attr($title_color) . '; font-size:' . esc_attr($title_font_size) . 'px; line-height:' . esc_attr($title_line_height) . 'em; margin: 0;">' . get_the_title() . '</h3>';
             
             // Meta (author and date with icons)
@@ -514,10 +521,23 @@ function aqm_load_more_posts_handler() {
             // Excerpt with line height control and word limit from content
             $html .= '<p class="aqm-post-excerpt" style="color:' . esc_attr($content_color) . '; font-size:' . esc_attr($content_font_size) . 'px; line-height:' . esc_attr($content_line_height) . 'em;">' . wp_trim_words(has_excerpt() ? get_the_excerpt() : get_the_content(), $excerpt_limit, '...') . '</p>';
             
-            // Read More Button
-            $html .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="transition: background-color 0.5s ease, color 0.5s ease; color:' . esc_attr($read_more_color) . '; background-color:' . esc_attr($read_more_bg_color) . '; padding:' . esc_attr($read_more_padding) . '; border-radius:' . esc_attr($read_more_border_radius) . 'px; display: inline-block; margin-top: 20px; font-size:' . esc_attr($read_more_font_size) . 'px; text-decoration: none; align-self: flex-start;' . $uppercase_style . '" onmouseover="this.style.color=\'' . esc_attr($read_more_hover_color) . '\'; this.style.backgroundColor=\'' . esc_attr($read_more_hover_bg_color) . '\';" onmouseout="this.style.color=\'' . esc_attr($read_more_color) . '\'; this.style.backgroundColor=\'' . esc_attr($read_more_bg_color) . '\';">' . esc_html($read_more_text) . '</a>';
+            // Read More Button - conditional positioning
+            if ($read_more_position_bottom === 'off') {
+                // Inline positioning - button appears under excerpt
+                $html .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="transition: background-color 0.5s ease, color 0.5s ease; color:' . esc_attr($read_more_color) . '; background-color:' . esc_attr($read_more_bg_color) . '; padding:' . esc_attr($read_more_padding) . '; border-radius:' . esc_attr($read_more_border_radius) . 'px; display: inline-block; margin-top: 15px; font-size:' . esc_attr($read_more_font_size) . 'px; text-decoration: none;' . $uppercase_style . '" onmouseover="this.style.color=\'' . esc_attr($read_more_hover_color) . '\'; this.style.backgroundColor=\'' . esc_attr($read_more_hover_bg_color) . '\';"; onmouseout="this.style.color=\'' . esc_attr($read_more_color) . '\'; this.style.backgroundColor=\'' . esc_attr($read_more_bg_color) . '\';";>' . esc_html($read_more_text) . '</a>';
+            }
             
             $html .= '</div>'; // Close aqm-post-content
+            
+            // Bottom left positioned read more button (when enabled)
+            if ($read_more_position_bottom === 'on') {
+                $content_padding_values = explode(' ', $content_padding);
+                $bottom_padding = isset($content_padding_values[2]) ? $content_padding_values[2] : (isset($content_padding_values[0]) ? $content_padding_values[0] : '20px');
+                $left_padding = isset($content_padding_values[3]) ? $content_padding_values[3] : (isset($content_padding_values[1]) ? $content_padding_values[1] : (isset($content_padding_values[0]) ? $content_padding_values[0] : '20px'));
+                
+                $html .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="position: absolute; bottom: ' . esc_attr($bottom_padding) . '; left: ' . esc_attr($left_padding) . '; z-index: 3; transition: background-color 0.5s ease, color 0.5s ease; color:' . esc_attr($read_more_color) . '; background-color:' . esc_attr($read_more_bg_color) . '; padding:' . esc_attr($read_more_padding) . '; border-radius:' . esc_attr($read_more_border_radius) . 'px; display: inline-block; font-size:' . esc_attr($read_more_font_size) . 'px; text-decoration: none;' . $uppercase_style . '" onmouseover="this.style.color=\'' . esc_attr($read_more_hover_color) . '\'; this.style.backgroundColor=\'' . esc_attr($read_more_hover_bg_color) . '\';"; onmouseout="this.style.color=\'' . esc_attr($read_more_color) . '\'; this.style.backgroundColor=\'' . esc_attr($read_more_bg_color) . '\';";>' . esc_html($read_more_text) . '</a>';
+            }
+            
             $html .= '</div>'; // Close aqm-post-item
             } // Close grid view else
         }
