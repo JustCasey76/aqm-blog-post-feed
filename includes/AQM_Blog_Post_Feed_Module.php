@@ -208,6 +208,77 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                 'show_if'         => array('layout_type' => 'list'),
                 'description'     => esc_html__('Spacing between list items.', 'aqm-blog-post-feed'),
             ),
+            'list_font_family' => array(
+                'label'           => esc_html__('List Font Family', 'aqm-blog-post-feed'),
+                'type'            => 'font',
+                'default'         => '',
+                'show_if'         => array('layout_type' => 'list'),
+                'description'     => esc_html__('Choose a font family for the list titles.', 'aqm-blog-post-feed'),
+            ),
+            'list_font_weight' => array(
+                'label'           => esc_html__('List Font Weight', 'aqm-blog-post-feed'),
+                'type'            => 'select',
+                'options'         => array(
+                    '300' => esc_html__('Light', 'aqm-blog-post-feed'),
+                    '400' => esc_html__('Normal', 'aqm-blog-post-feed'),
+                    '500' => esc_html__('Medium', 'aqm-blog-post-feed'),
+                    '600' => esc_html__('Semi Bold', 'aqm-blog-post-feed'),
+                    '700' => esc_html__('Bold', 'aqm-blog-post-feed'),
+                    '800' => esc_html__('Extra Bold', 'aqm-blog-post-feed'),
+                ),
+                'default'         => '400',
+                'show_if'         => array('layout_type' => 'list'),
+                'description'     => esc_html__('Font weight for list titles.', 'aqm-blog-post-feed'),
+            ),
+            'list_text_transform' => array(
+                'label'           => esc_html__('List Text Transform', 'aqm-blog-post-feed'),
+                'type'            => 'select',
+                'options'         => array(
+                    'none' => esc_html__('None', 'aqm-blog-post-feed'),
+                    'uppercase' => esc_html__('Uppercase', 'aqm-blog-post-feed'),
+                    'lowercase' => esc_html__('Lowercase', 'aqm-blog-post-feed'),
+                    'capitalize' => esc_html__('Capitalize', 'aqm-blog-post-feed'),
+                ),
+                'default'         => 'none',
+                'show_if'         => array('layout_type' => 'list'),
+                'description'     => esc_html__('Text transformation for list titles.', 'aqm-blog-post-feed'),
+            ),
+            'list_line_height' => array(
+                'label'           => esc_html__('List Line Height (em)', 'aqm-blog-post-feed'),
+                'type'            => 'range',
+                'default'         => 1.4,
+                'options'         => array(
+                    'min'  => 1,
+                    'max'  => 2.5,
+                    'step' => 0.1,
+                ),
+                'show_if'         => array('layout_type' => 'list'),
+                'description'     => esc_html__('Line height for list titles.', 'aqm-blog-post-feed'),
+            ),
+            'list_letter_spacing' => array(
+                'label'           => esc_html__('List Letter Spacing (px)', 'aqm-blog-post-feed'),
+                'type'            => 'range',
+                'default'         => 0,
+                'options'         => array(
+                    'min'  => -2,
+                    'max'  => 5,
+                    'step' => 0.1,
+                ),
+                'show_if'         => array('layout_type' => 'list'),
+                'description'     => esc_html__('Letter spacing for list titles.', 'aqm-blog-post-feed'),
+            ),
+            'list_posts_count' => array(
+                'label'           => esc_html__('Number of Posts to Show in List', 'aqm-blog-post-feed'),
+                'type'            => 'range',
+                'default'         => 10,
+                'options'         => array(
+                    'min'  => 1,
+                    'max'  => 50,
+                    'step' => 1,
+                ),
+                'show_if'         => array('layout_type' => 'list'),
+                'description'     => esc_html__('Maximum number of posts to display in list view.', 'aqm-blog-post-feed'),
+            ),
             'meta_font_size' => array(
                 'label'           => esc_html__('Meta Font Size (px)', 'aqm-blog-post-feed'),
                 'type'            => 'range',
@@ -448,6 +519,12 @@ public function render($attrs, $render_slug, $content = null) {
         $list_title_color = isset($this->props['list_title_color']) ? $this->props['list_title_color'] : '#333333';
         $list_title_hover_color = isset($this->props['list_title_hover_color']) ? $this->props['list_title_hover_color'] : '#0073e6';
         $list_item_spacing = isset($this->props['list_item_spacing']) ? $this->props['list_item_spacing'] : 10;
+        $list_font_family = isset($this->props['list_font_family']) ? $this->props['list_font_family'] : '';
+        $list_font_weight = isset($this->props['list_font_weight']) ? $this->props['list_font_weight'] : '400';
+        $list_text_transform = isset($this->props['list_text_transform']) ? $this->props['list_text_transform'] : 'none';
+        $list_line_height = isset($this->props['list_line_height']) ? $this->props['list_line_height'] : 1.4;
+        $list_letter_spacing = isset($this->props['list_letter_spacing']) ? $this->props['list_letter_spacing'] : 0;
+        $list_posts_count = isset($this->props['list_posts_count']) ? intval($this->props['list_posts_count']) : 10;
         
         $columns = $this->props['columns'];
         $columns_tablet = $this->props['columns_tablet'];
@@ -527,10 +604,17 @@ public function render($attrs, $render_slug, $content = null) {
                 break;
         }
 
+        // Determine posts per page based on layout type
+        if ($layout_type === 'list') {
+            $posts_per_page = $list_posts_count;
+        } else {
+            $posts_per_page = ($enable_load_more === 'on') ? $initial_posts : $post_limit;
+        }
+        
         // Fetch posts
         $args = array(
             'post_type' => 'post',
-            'posts_per_page' => ($enable_load_more === 'on') ? $initial_posts : $post_limit,
+            'posts_per_page' => $posts_per_page,
             'orderby' => $orderby,
             'order' => $order,
         );
@@ -601,9 +685,22 @@ public function render($attrs, $render_slug, $content = null) {
                 $posts->the_post();
                 
                 if ($layout_type === 'list') {
-                    // List view - only show title as link
+                    // List view - only show title as link with comprehensive styling
+                    $list_font_family_style = !empty($list_font_family) ? 'font-family: ' . esc_attr($list_font_family) . ';' : '';
+                    
+                    $list_title_style = 'color: ' . esc_attr($list_title_color) . '; '
+                        . 'font-size: ' . esc_attr($list_title_font_size) . 'px; '
+                        . 'font-weight: ' . esc_attr($list_font_weight) . '; '
+                        . 'text-transform: ' . esc_attr($list_text_transform) . '; '
+                        . 'line-height: ' . esc_attr($list_line_height) . 'em; '
+                        . 'letter-spacing: ' . esc_attr($list_letter_spacing) . 'px; '
+                        . $list_font_family_style
+                        . 'text-decoration: none; '
+                        . 'display: block; '
+                        . 'transition: color 0.3s ease;';
+                    
                     $output .= '<div class="aqm-list-item" style="margin-bottom: ' . esc_attr($list_item_spacing) . 'px;">';
-                    $output .= '<a href="' . get_permalink() . '" class="aqm-list-title" style="color: ' . esc_attr($list_title_color) . '; font-size: ' . esc_attr($list_title_font_size) . 'px; text-decoration: none; display: block;">' . get_the_title() . '</a>';
+                    $output .= '<a href="' . get_permalink() . '" class="aqm-list-title" style="' . $list_title_style . '">' . get_the_title() . '</a>';
                     $output .= '</div>';
                 } else {
                     // Grid view - existing functionality
@@ -753,6 +850,11 @@ $output .= '<p class="aqm-post-excerpt" style="color:' . esc_attr($content_color
                             list_title_color: "' . $list_title_color . '",
                             list_title_hover_color: "' . $list_title_hover_color . '",
                             list_item_spacing: ' . $list_item_spacing . ',
+                            list_font_family: "' . $list_font_family . '",
+                            list_font_weight: "' . $list_font_weight . '",
+                            list_text_transform: "' . $list_text_transform . '",
+                            list_line_height: ' . $list_line_height . ',
+                            list_letter_spacing: ' . $list_letter_spacing . ',
                             current_post_id: ' . $current_post_id . '
                         },
                         success: function(response) {
@@ -843,6 +945,11 @@ $output .= '<p class="aqm-post-excerpt" style="color:' . esc_attr($content_color
                 .aqm-post-title {
                     font-size:' . esc_attr($title_font_size_mobile) . 'px !important;
                 }
+            }
+            
+            /* List view hover effects */
+            #' . $module_id . ' .aqm-list-title:hover {
+                color: ' . esc_attr($list_title_hover_color) . ' !important;
             }
         </style>';
 

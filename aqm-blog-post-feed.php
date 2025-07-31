@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 1.0.49
+Version: 1.0.50
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 GitHub Plugin URI: https://github.com/JustCasey76/aqm-blog-post-feed
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Version for cache busting
-define('AQM_BLOG_POST_FEED_VERSION', '1.0.49');
+define('AQM_BLOG_POST_FEED_VERSION', '1.0.50');
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
@@ -369,6 +369,11 @@ function aqm_load_more_posts_handler() {
     $list_title_color = isset($_POST['list_title_color']) ? sanitize_text_field($_POST['list_title_color']) : '#333333';
     $list_title_hover_color = isset($_POST['list_title_hover_color']) ? sanitize_text_field($_POST['list_title_hover_color']) : '#0073e6';
     $list_item_spacing = isset($_POST['list_item_spacing']) ? intval($_POST['list_item_spacing']) : 10;
+    $list_font_family = isset($_POST['list_font_family']) ? sanitize_text_field($_POST['list_font_family']) : '';
+    $list_font_weight = isset($_POST['list_font_weight']) ? sanitize_text_field($_POST['list_font_weight']) : '400';
+    $list_text_transform = isset($_POST['list_text_transform']) ? sanitize_text_field($_POST['list_text_transform']) : 'none';
+    $list_line_height = isset($_POST['list_line_height']) ? floatval($_POST['list_line_height']) : 1.4;
+    $list_letter_spacing = isset($_POST['list_letter_spacing']) ? floatval($_POST['list_letter_spacing']) : 0;
     
     // Apply uppercase style based on the setting
     $uppercase_style = $read_more_uppercase === 'on' ? 'text-transform: uppercase;' : '';
@@ -442,9 +447,22 @@ function aqm_load_more_posts_handler() {
             $posts->the_post();
             
             if ($layout_type === 'list') {
-                // List view - only show title as link
+                // List view - only show title as link with comprehensive styling
+                $list_font_family_style = !empty($list_font_family) ? 'font-family: ' . esc_attr($list_font_family) . ';' : '';
+                
+                $list_title_style = 'color: ' . esc_attr($list_title_color) . '; '
+                    . 'font-size: ' . esc_attr($list_title_font_size) . 'px; '
+                    . 'font-weight: ' . esc_attr($list_font_weight) . '; '
+                    . 'text-transform: ' . esc_attr($list_text_transform) . '; '
+                    . 'line-height: ' . esc_attr($list_line_height) . 'em; '
+                    . 'letter-spacing: ' . esc_attr($list_letter_spacing) . 'px; '
+                    . $list_font_family_style
+                    . 'text-decoration: none; '
+                    . 'display: block; '
+                    . 'transition: color 0.3s ease;';
+                
                 $html .= '<div class="aqm-list-item" style="margin-bottom: ' . esc_attr($list_item_spacing) . 'px;">';
-                $html .= '<a href="' . get_permalink() . '" class="aqm-list-title" style="color: ' . esc_attr($list_title_color) . '; font-size: ' . esc_attr($list_title_font_size) . 'px; text-decoration: none; display: block;">' . get_the_title() . '</a>';
+                $html .= '<a href="' . get_permalink() . '" class="aqm-list-title" style="' . $list_title_style . '">' . get_the_title() . '</a>';
                 $html .= '</div>';
             } else {
                 // Grid view - existing functionality
