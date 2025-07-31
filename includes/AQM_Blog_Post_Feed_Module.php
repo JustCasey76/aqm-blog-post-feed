@@ -773,8 +773,8 @@ public function render($attrs, $render_slug, $content = null) {
 
                 // Read More Button - conditional positioning
                 if ($read_more_position_bottom === 'off') {
-                    // Inline positioning - button appears under excerpt
-                    $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="transition: background-color 0.5s ease, color 0.5s ease; color:' . esc_attr($read_more_color) . '; background-color:' . esc_attr($read_more_bg_color) . '; padding:' . esc_attr($read_more_padding) . '; border-radius:' . esc_attr($read_more_border_radius) . 'px; display: inline-block; margin-top: 15px; font-size:' . esc_attr($read_more_font_size) . 'px; text-decoration: none;' . $uppercase_style . '">' . esc_html($read_more_text) . '</a>';
+                    // Inline positioning - button appears under excerpt with explicit width
+                    $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="transition: background-color 0.5s ease, color 0.5s ease; color:' . esc_attr($read_more_color) . '; background-color:' . esc_attr($read_more_bg_color) . '; padding:' . esc_attr($read_more_padding) . '; border-radius:' . esc_attr($read_more_border_radius) . 'px; display: inline-block; width: fit-content; min-width: 120px; max-width: 200px; margin-top: 15px; font-size:' . esc_attr($read_more_font_size) . 'px; text-decoration: none;' . $uppercase_style . '">' . esc_html($read_more_text) . '</a>';
                 }
                 
                 $output .= '</div>'; // Close aqm-post-content
