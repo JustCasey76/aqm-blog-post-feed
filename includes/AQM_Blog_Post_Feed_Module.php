@@ -517,11 +517,16 @@ $output .= '<p class="aqm-post-excerpt" style="color:' . esc_attr($content_color
 
 
                 
-// Read More Button with padding, border-radius, and inline-block styling, with uppercase toggle
-$output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="transition: background-color 0.5s ease, color 0.5s ease; color:' . esc_attr($read_more_color) . '; background-color:' . esc_attr($read_more_bg_color) . '; padding:' . esc_attr($read_more_padding) . '; border-radius:' . esc_attr($read_more_border_radius) . 'px; display: inline-block; margin-top: 20px; font-size:' . esc_attr($read_more_font_size) . 'px; text-decoration: none; align-self: flex-start;' . $uppercase_style . '">' . esc_html($read_more_text) . '</a>';
+                $output .= '</div>'; // Close aqm-post-content
+                
+                // Read More Button positioned at lower left with same padding as content
+                $content_padding_values = explode(' ', $content_padding);
+                $bottom_padding = isset($content_padding_values[2]) ? $content_padding_values[2] : (isset($content_padding_values[0]) ? $content_padding_values[0] : '20px');
+                $left_padding = isset($content_padding_values[3]) ? $content_padding_values[3] : (isset($content_padding_values[1]) ? $content_padding_values[1] : (isset($content_padding_values[0]) ? $content_padding_values[0] : '20px'));
+                
+                $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="position: absolute; bottom: ' . esc_attr($bottom_padding) . '; left: ' . esc_attr($left_padding) . '; z-index: 3; transition: background-color 0.5s ease, color 0.5s ease; color:' . esc_attr($read_more_color) . '; background-color:' . esc_attr($read_more_bg_color) . '; padding:' . esc_attr($read_more_padding) . '; border-radius:' . esc_attr($read_more_border_radius) . 'px; display: inline-block; font-size:' . esc_attr($read_more_font_size) . 'px; text-decoration: none;' . $uppercase_style . '">' . esc_html($read_more_text) . '</a>';
 
                 
-                $output .= '</div>'; // Close aqm-post-content
                 $output .= '</div>'; // Close aqm-post-item
             }
         }
