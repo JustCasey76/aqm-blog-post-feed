@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 1.0.50
+Version: 1.0.51
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 GitHub Plugin URI: https://github.com/JustCasey76/aqm-blog-post-feed
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Version for cache busting
-define('AQM_BLOG_POST_FEED_VERSION', '1.0.50');
+define('AQM_BLOG_POST_FEED_VERSION', '1.0.51');
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
@@ -398,7 +398,18 @@ function aqm_load_more_posts_handler() {
         }
     }
     
-    // Exclude archived posts if enabled
+    // Always exclude posts from "Archive" category
+    $archive_categories = get_categories(array(
+        'hide_empty' => false,
+        'name' => 'Archive'
+    ));
+    
+    $exclude_cat_ids = array();
+    foreach ($archive_categories as $cat) {
+        $exclude_cat_ids[] = $cat->term_id;
+    }
+    
+    // Exclude archived posts if enabled (existing functionality)
     if ($exclude_archived === 'on') {
         // Get categories with 'archive' in the name or slug
         $archived_categories = get_categories(array(
@@ -412,24 +423,22 @@ function aqm_load_more_posts_handler() {
             'slug__like' => 'archive'
         ));
         
-        $archived_cat_ids = array();
         foreach ($archived_categories as $cat) {
-            $archived_cat_ids[] = $cat->term_id;
+            $exclude_cat_ids[] = $cat->term_id;
         }
         foreach ($archived_categories_slug as $cat) {
-            $archived_cat_ids[] = $cat->term_id;
+            $exclude_cat_ids[] = $cat->term_id;
         }
-        
-        // Remove duplicates
-        $archived_cat_ids = array_unique($archived_cat_ids);
-        
-        if (!empty($archived_cat_ids)) {
-            $args['category__not_in'] = $archived_cat_ids;
-        }
-        
-        // Also exclude posts with 'draft' or 'private' status
-        $args['post_status'] = 'publish';
     }
+    
+    // Remove duplicates and apply exclusions
+    $exclude_cat_ids = array_unique($exclude_cat_ids);
+    if (!empty($exclude_cat_ids)) {
+        $args['category__not_in'] = $exclude_cat_ids;
+    }
+    
+    // Also exclude posts with 'draft' or 'private' status
+    $args['post_status'] = 'publish';
     
     // Exclude current post if we're on a single post page
     if (isset($_POST['current_post_id']) && !empty($_POST['current_post_id'])) {

@@ -397,6 +397,16 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                 'default'         => 'off',
                 'description'     => esc_html__('Toggle to set the "Read More" link to uppercase.', 'aqm-blog-post-feed'),
             ),
+            'read_more_position_bottom' => array(
+                'label'           => esc_html__('Position Read More at Bottom Left', 'aqm-blog-post-feed'),
+                'type'            => 'yes_no_button',
+                'options'         => array(
+                    'on'  => esc_html__('Yes', 'aqm-blog-post-feed'),
+                    'off' => esc_html__('No', 'aqm-blog-post-feed'),
+                ),
+                'default'         => 'on',
+                'description'     => esc_html__('When enabled, positions the Read More button at the bottom left of the post item. When disabled, uses inline positioning.', 'aqm-blog-post-feed'),
+            ),
             // Background size is hardcoded to 120% with hover at 135%
             
             'post_limit' => array(
@@ -554,6 +564,7 @@ public function render($attrs, $render_slug, $content = null) {
         $read_more_hover_color = isset($this->props['read_more_hover_color']) ? $this->props['read_more_hover_color'] : '#ffffff';
         $read_more_hover_bg_color = isset($this->props['read_more_hover_bg_color']) ? $this->props['read_more_hover_bg_color'] : '#005bb5';
         $read_more_uppercase = $this->props['read_more_uppercase'];
+        $read_more_position_bottom = isset($this->props['read_more_position_bottom']) ? $this->props['read_more_position_bottom'] : 'on';
         $excerpt_limit = intval($this->props['excerpt_limit']);
         $read_more_text = $this->props['read_more_text'];
         // Hardcoded background sizes
@@ -630,9 +641,20 @@ public function render($attrs, $render_slug, $content = null) {
             }
         }
         
-        // Exclude archived posts if enabled
+        // Always exclude posts from "Archive" category
+        $archive_categories = get_categories(array(
+            'hide_empty' => false,
+            'name' => 'Archive'
+        ));
+        
+        $exclude_cat_ids = array();
+        foreach ($archive_categories as $cat) {
+            $exclude_cat_ids[] = $cat->term_id;
+        }
+        
+        // Handle archived post exclusion (existing functionality)
         if ($exclude_archived === 'on') {
-            // Get categories with 'archive' in the name or slug
+            // Get categories with 'archive' in the name
             $archived_categories = get_categories(array(
                 'hide_empty' => false,
                 'name__like' => 'archive'
@@ -644,24 +666,22 @@ public function render($attrs, $render_slug, $content = null) {
                 'slug__like' => 'archive'
             ));
             
-            $archived_cat_ids = array();
             foreach ($archived_categories as $cat) {
-                $archived_cat_ids[] = $cat->term_id;
+                $exclude_cat_ids[] = $cat->term_id;
             }
             foreach ($archived_categories_slug as $cat) {
-                $archived_cat_ids[] = $cat->term_id;
+                $exclude_cat_ids[] = $cat->term_id;
             }
-            
-            // Remove duplicates
-            $archived_cat_ids = array_unique($archived_cat_ids);
-            
-            if (!empty($archived_cat_ids)) {
-                $args['category__not_in'] = $archived_cat_ids;
-            }
-            
-            // Also exclude posts with 'draft' or 'private' status
-            $args['post_status'] = 'publish';
         }
+        
+        // Remove duplicates and apply exclusions
+        $exclude_cat_ids = array_unique($exclude_cat_ids);
+        if (!empty($exclude_cat_ids)) {
+            $args['category__not_in'] = $exclude_cat_ids;
+        }
+        
+        // Also exclude posts with 'draft' or 'private' status
+        $args['post_status'] = 'publish';
         
         // Exclude current post if we're on a single post page
         if (is_single()) {
