@@ -399,11 +399,11 @@ public function render($attrs, $render_slug, $content = null) {
         $show_meta_date = isset($this->props['show_meta_date']) ? $this->props['show_meta_date'] : 'on';
         $read_more_padding = $this->format_padding($this->props['read_more_padding']);
         $read_more_border_radius = $this->props['read_more_border_radius'];
-        $read_more_color = $this->props['read_more_color'];
-        $read_more_bg_color = $this->props['read_more_bg_color'];
-        $read_more_font_size = $this->props['read_more_font_size'];
-        $read_more_hover_color = $this->props['read_more_hover_color'];
-        $read_more_hover_bg_color = $this->props['read_more_hover_bg_color'];
+        $read_more_color = isset($this->props['read_more_color']) ? $this->props['read_more_color'] : '#ffffff';
+        $read_more_bg_color = isset($this->props['read_more_bg_color']) ? $this->props['read_more_bg_color'] : '#0073e6';
+        $read_more_font_size = isset($this->props['read_more_font_size']) ? $this->props['read_more_font_size'] : 14;
+        $read_more_hover_color = isset($this->props['read_more_hover_color']) ? $this->props['read_more_hover_color'] : '#ffffff';
+        $read_more_hover_bg_color = isset($this->props['read_more_hover_bg_color']) ? $this->props['read_more_hover_bg_color'] : '#005bb5';
         $read_more_uppercase = $this->props['read_more_uppercase'];
         $excerpt_limit = intval($this->props['excerpt_limit']);
         $read_more_text = $this->props['read_more_text'];
@@ -466,8 +466,11 @@ public function render($attrs, $render_slug, $content = null) {
         
         $posts = new WP_Query($args);
 
+        // Generate a unique ID for this instance
+        $module_id = 'aqm-blog-' . wp_rand(1000, 9999);
+        
         // Use CSS Grid layout
-        $output = '<div class="aqm-post-feed" style="display: grid; grid-template-columns: repeat(' . esc_attr($columns) . ', 1fr); gap: ' . esc_attr($spacing) . 'px;">';
+        $output = '<div id="' . $module_id . '" class="aqm-post-feed" style="display: grid; grid-template-columns: repeat(' . esc_attr($columns) . ', 1fr); gap: ' . esc_attr($spacing) . 'px;">';
 
         if ($posts->have_posts()) {
             while ($posts->have_posts()) {
@@ -531,8 +534,6 @@ $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="trans
         
         // Add Load More button if enabled AND there are more posts to load
         if ($enable_load_more === 'on' && $has_more_posts) {
-            // Generate a unique ID for this instance
-            $module_id = 'aqm-blog-' . wp_rand(1000, 9999);
             
             $output .= '<div class="aqm-load-more-container" style="text-align: center; margin-top: 30px;">';
             $output .= '<button id="' . $module_id . '-load-more" class="aqm-load-more-button" style="background-color: ' . esc_attr($load_more_bg_color) . '; color: ' . esc_attr($load_more_text_color) . '; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; transition: all 0.3s ease;">' . esc_html($load_more_text) . '</button>';
@@ -656,7 +657,11 @@ $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="trans
             .aqm-post-item:hover {
                 background-size: ' . esc_attr($background_zoom) . '% !important;
             }
-            .aqm-post-item .aqm-read-more:hover {
+            #' . $module_id . '.aqm-post-feed .aqm-post-item .aqm-post-content .aqm-read-more {
+                color: ' . esc_attr($read_more_color) . ' !important;
+                background-color: ' . esc_attr($read_more_bg_color) . ' !important;
+            }
+            #' . $module_id . '.aqm-post-feed .aqm-post-item .aqm-post-content .aqm-read-more:hover {
                 background-color: ' . esc_attr($read_more_hover_bg_color) . ' !important;
                 color: ' . esc_attr($read_more_hover_color) . ' !important;
             }
