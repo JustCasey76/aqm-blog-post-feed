@@ -480,14 +480,14 @@ function aqm_load_more_posts_handler() {
                 $date = get_the_date();
                 $thumbnail_url = get_the_post_thumbnail_url(null, 'large');
                 
-                // Start featured list item container
-                $html .= '<div class="aqm-featured-list-item">';
+                // Start card item container
+                $html .= '<div class="aqm-card-item">';
                 
                 // Featured image section
-                $html .= '<div class="aqm-featured-list-image" style="background-image: url(' . esc_url($thumbnail_url) . ');"></div>';
+                $html .= '<div class="aqm-card-image" style="background-image: url(' . esc_url($thumbnail_url) . ');"></div>';
                 
                 // Content section
-                $html .= '<div class="aqm-featured-list-content">';
+                $html .= '<div class="aqm-card-content">';
                 
                 // Title
                 $html .= '<h3 class="aqm-post-title" style="color:' . esc_attr($title_color) . '; font-size:' . esc_attr($title_font_size) . 'px; line-height:' . esc_attr($title_line_height) . 'em; margin: 0 0 10px;">' . get_the_title() . '</h3>';
@@ -519,8 +519,8 @@ function aqm_load_more_posts_handler() {
                 // Read More Button
                 $html .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="transition: background-color 0.5s ease, color 0.5s ease; color:' . esc_attr($read_more_color) . '; background-color:' . esc_attr($read_more_bg_color) . '; padding:' . esc_attr($read_more_padding) . '; border-radius:' . esc_attr($read_more_border_radius) . 'px; display: inline-block; width: fit-content; margin-top: 15px; font-size:' . esc_attr($read_more_font_size) . 'px; text-decoration: none;' . $uppercase_style . '" onmouseover="this.style.color=\'' . esc_attr($read_more_hover_color) . '\'; this.style.backgroundColor=\'' . esc_attr($read_more_hover_bg_color) . '\';" onmouseout="this.style.color=\'' . esc_attr($read_more_color) . '\'; this.style.backgroundColor=\'' . esc_attr($read_more_bg_color) . '\';">' . esc_html($read_more_text) . '</a>';
                 
-                $html .= '</div>'; // Close aqm-featured-list-content
-                $html .= '</div>'; // Close aqm-featured-list-item
+                $html .= '</div>'; // Close aqm-card-content
+                $html .= '</div>'; // Close aqm-card-item
             } else {
                 // Grid view - existing functionality
                 $author = get_the_author();
