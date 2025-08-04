@@ -38,6 +38,7 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                     'step' => 1,
                 ),
                 'description'     => esc_html__('Adjust the number of columns for the post grid on desktop.', 'aqm-blog-post-feed'),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'columns_tablet' => array(
                 'label'           => esc_html__('Number of Columns (Tablet)', 'aqm-blog-post-feed'),
@@ -49,6 +50,7 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                     'step' => 1,
                 ),
                 'description'     => esc_html__('Adjust the number of columns for the post grid on tablet.', 'aqm-blog-post-feed'),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'columns_mobile' => array(
                 'label'           => esc_html__('Number of Columns (Mobile)', 'aqm-blog-post-feed'),
@@ -60,6 +62,7 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                     'step' => 1,
                 ),
                 'description'     => esc_html__('Adjust the number of columns for the post grid on mobile.', 'aqm-blog-post-feed'),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'spacing' => array(
                 'label'           => esc_html__('Column Gap (px)', 'aqm-blog-post-feed'),
@@ -71,24 +74,39 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                     'step' => 1,
                 ),
                 'description'     => esc_html__('Set the space between post items.', 'aqm-blog-post-feed'),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
+            ),
+            'post_bottom_margin' => array(
+                'label'           => esc_html__('Post Bottom Margin (px)', 'aqm-blog-post-feed'),
+                'type'            => 'range',
+                'default'         => 30,
+                'options'         => array(
+                    'min'  => 0,
+                    'max'  => 100,
+                    'step' => 1,
+                ),
+                'description'     => esc_html__('Controls the vertical spacing between post items in all layouts.', 'aqm-blog-post-feed'),
             ),
             'overlay_color' => array(
                 'label'           => esc_html__('Overlay Background Color', 'aqm-blog-post-feed'),
                 'type'            => 'color',
-                'default'         => 'rgba(0, 0, 0, 0.5)',
+                'default'         => 'rgba(0,0,0,0.5)',
+                'show_if'         => array('layout_type' => 'grid'),
             ),
             'overlay_hover_color' => array(
                 'label'           => esc_html__('Overlay Hover Background Color', 'aqm-blog-post-feed'),
                 'type'            => 'color',
-                'default'         => 'rgba(0, 0, 0, 0.3)',
+                'default'         => 'rgba(0,0,0,0.7)',
+                'show_if'         => array('layout_type' => 'grid'),
             ),
             'title_color' => array(
                 'label'           => esc_html__('Title Color', 'aqm-blog-post-feed'),
                 'type'            => 'color',
                 'default'         => '#ffffff',
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'title_font_size' => array(
-                'label'           => esc_html__('Title Font Size (Desktop)', 'aqm-blog-post-feed'),
+                'label'           => esc_html__('Title Font Size (px)', 'aqm-blog-post-feed'),
                 'type'            => 'range',
                 'default'         => 18,
                 'options'         => array(
@@ -96,6 +114,7 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                     'max'  => 50,
                     'step' => 1,
                 ),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'title_font_size_mobile' => array(
                 'label'           => esc_html__('Title Font Size (Mobile)', 'aqm-blog-post-feed'),
@@ -103,9 +122,10 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                 'default'         => 16,
                 'options'         => array(
                     'min'  => 10,
-                    'max'  => 50,
+                    'max'  => 30,
                     'step' => 1,
                 ),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'title_line_height' => array(
                 'label'           => esc_html__('Title Line Height (em)', 'aqm-blog-post-feed'),
@@ -116,6 +136,18 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                     'max'  => 2,
                     'step' => 0.1,
                 ),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
+            ),
+            'title_line_height_mobile' => array(
+                'label'           => esc_html__('Title Line Height (Mobile)', 'aqm-blog-post-feed'),
+                'type'            => 'range',
+                'default'         => 1.2,
+                'options'         => array(
+                    'min'  => 1,
+                    'max'  => 2,
+                    'step' => 0.1,
+                ),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'title_font_family' => array(
                 'label'           => esc_html__('Title Font Family', 'aqm-blog-post-feed'),
@@ -132,11 +164,13 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                     'max'  => 30,
                     'step' => 1,
                 ),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'content_color' => array(
                 'label'           => esc_html__('Content Color', 'aqm-blog-post-feed'),
                 'type'            => 'color',
                 'default'         => '#ffffff',
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'content_line_height' => array(
                 'label'           => esc_html__('Content Line Height (em)', 'aqm-blog-post-feed'),
@@ -147,6 +181,7 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                     'max'  => 3,
                     'step' => 0.1,
                 ),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'content_font_family' => array(
                 'label'           => esc_html__('Content Font Family', 'aqm-blog-post-feed'),
@@ -289,21 +324,24 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                     'max'  => 20,
                     'step' => 1,
                 ),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'meta_line_height' => array(
                 'label'           => esc_html__('Meta Line Height (em)', 'aqm-blog-post-feed'),
                 'type'            => 'range',
-                'default'         => 1.4,
+                'default'         => 1.5,
                 'options'         => array(
                     'min'  => 1,
-                    'max'  => 2,
+                    'max'  => 3,
                     'step' => 0.1,
                 ),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'meta_color' => array(
-                'label'           => esc_html__('Meta Color', 'aqm-blog-post-feed'),
+                'label'           => esc_html__('Meta Text Color', 'aqm-blog-post-feed'),
                 'type'            => 'color',
                 'default'         => '#ffffff',
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'show_meta_author' => array(
                 'label'           => esc_html__('Show Author', 'aqm-blog-post-feed'),
@@ -314,6 +352,7 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                 ),
                 'default'         => 'on',
                 'description'     => esc_html__('Toggle to show or hide the author in post meta.', 'aqm-blog-post-feed'),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'show_meta_date' => array(
                 'label'           => esc_html__('Show Date', 'aqm-blog-post-feed'),
@@ -324,6 +363,7 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                 ),
                 'default'         => 'on',
                 'description'     => esc_html__('Toggle to show or hide the date in post meta.', 'aqm-blog-post-feed'),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             // Updated field for excerpt word limit with up/down arrows (range type)
             'excerpt_limit' => array(
@@ -335,31 +375,37 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                     'max'  => 100,
                     'step' => 10,
                 ),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'read_more_text' => array(
                 'label'           => esc_html__('Read More Text', 'aqm-blog-post-feed'),
                 'type'            => 'text',
                 'default'         => 'Read More',
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'read_more_color' => array(
                 'label'           => esc_html__('Read More Text Color', 'aqm-blog-post-feed'),
                 'type'            => 'color',
                 'default'         => '#ffffff',
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'read_more_bg_color' => array(
                 'label'           => esc_html__('Read More Background Color', 'aqm-blog-post-feed'),
                 'type'            => 'color',
                 'default'         => '#0073e6',
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'read_more_hover_color' => array(
                 'label'           => esc_html__('Read More Hover Text Color', 'aqm-blog-post-feed'),
                 'type'            => 'color',
                 'default'         => '#ffffff',
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'read_more_hover_bg_color' => array(
                 'label'           => esc_html__('Read More Hover Background Color', 'aqm-blog-post-feed'),
                 'type'            => 'color',
                 'default'         => '#005bb5',
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'read_more_font_size' => array(
                 'label'           => esc_html__('Read More Font Size (px)', 'aqm-blog-post-feed'),
@@ -370,12 +416,14 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                     'max'  => 30,
                     'step' => 1,
                 ),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'read_more_padding' => array(
                 'label'           => esc_html__('Read More Padding', 'aqm-blog-post-feed'),
                 'type'            => 'custom_padding',
                 'default'         => '10px|20px|10px|20px',
                 'description'     => esc_html__('Set the padding for the "Read More" link (Top | Right | Bottom | Left).', 'aqm-blog-post-feed'),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'read_more_border_radius' => array(
                 'label'           => esc_html__('Read More Border Radius (px)', 'aqm-blog-post-feed'),
@@ -387,6 +435,7 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                     'step' => 1,
                 ),
                 'description'     => esc_html__('Set the border radius for the "Read More" link.', 'aqm-blog-post-feed'),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'read_more_uppercase' => array(
                 'label'           => esc_html__('Uppercase Read More Link', 'aqm-blog-post-feed'),
@@ -397,6 +446,7 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                 ),
                 'default'         => 'off',
                 'description'     => esc_html__('Toggle to set the "Read More" link to uppercase.', 'aqm-blog-post-feed'),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             'read_more_position_bottom' => array(
                 'label'           => esc_html__('Position Read More at Bottom Left', 'aqm-blog-post-feed'),
@@ -407,6 +457,7 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                 ),
                 'default'         => 'on',
                 'description'     => esc_html__('When enabled, positions the Read More button at the bottom left of the post item. When disabled, uses inline positioning.', 'aqm-blog-post-feed'),
+                'show_if'         => array('layout_type' => array('grid', 'featured_list')),
             ),
             // Background size is hardcoded to 120% with hover at 135%
             
@@ -700,7 +751,7 @@ public function render($attrs, $render_slug, $content = null) {
         } else if ($layout_type === 'featured_list') {
             $output = '<div id="' . $module_id . '" class="aqm-post-feed aqm-card-view" style="display: block;">';
         } else {
-            $output = '<div id="' . $module_id . '" class="aqm-post-feed aqm-grid-view" style="display: grid; grid-template-columns: repeat(' . esc_attr($columns) . ', 1fr); gap: ' . esc_attr($spacing) . 'px;">';
+            $output = '<div id="' . $module_id . '" class="aqm-post-feed aqm-grid-view" style="display: grid; grid-template-columns: repeat(' . esc_attr($columns) . ', 1fr); column-gap: ' . esc_attr($spacing) . 'px; row-gap: ' . esc_attr($this->props['post_bottom_margin']) . 'px;">';
         }
 
         if ($posts->have_posts()) {
@@ -722,7 +773,7 @@ public function render($attrs, $render_slug, $content = null) {
                         . 'display: block; '
                         . 'transition: color 0.3s ease;';
                     
-                    $output .= '<div class="aqm-list-item" style="margin-bottom: ' . esc_attr($list_item_spacing) . 'px;">';
+                    $output .= '<div class="aqm-list-item" style="margin-bottom: ' . esc_attr($this->props['post_bottom_margin']) . 'px;">';
                     $output .= '<a href="' . get_permalink() . '" class="aqm-list-title" style="' . $list_title_style . '">' . get_the_title() . '</a>';
                     $output .= '</div>';
                 } else if ($layout_type === 'featured_list') {
@@ -995,7 +1046,7 @@ public function render($attrs, $render_slug, $content = null) {
             .aqm-post-feed.aqm-card-view .aqm-card-item {
                 display: flex;
                 flex-wrap: nowrap;
-                margin-bottom: ' . esc_attr($spacing) . 'px;
+                margin-bottom: ' . esc_attr($this->props['post_bottom_margin']) . 'px;
                 background-color: #fff;
                 border-radius: 8px;
                 overflow: hidden;

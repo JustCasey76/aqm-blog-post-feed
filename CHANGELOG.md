@@ -1,5 +1,11 @@
 # AQM Blog Post Feed Changelog
 
+## 1.0.59 - August 4, 2025
+- Enhanced module UI with conditional display of options based on selected layout type
+- Added post bottom margin control for consistent vertical spacing across all layouts
+- Updated Card View layout to prevent image cropping with background-size: contain
+- Improved AJAX handler to use consistent styling for all layout types
+
 ## 1.0.43 - June 12, 2025
 - Added toggle options for showing/hiding author in post meta
 - Added toggle options for showing/hiding date in post meta

@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 1.0.58
+Version: 1.0.59
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 GitHub Plugin URI: https://github.com/JustCasey76/aqm-blog-post-feed
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Version for cache busting
-define('AQM_BLOG_POST_FEED_VERSION', '1.0.58');
+define('AQM_BLOG_POST_FEED_VERSION', '1.0.59');
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
@@ -471,7 +471,7 @@ function aqm_load_more_posts_handler() {
                     . 'display: block; '
                     . 'transition: color 0.3s ease;';
                 
-                $html .= '<div class="aqm-list-item" style="margin-bottom: ' . esc_attr($list_item_spacing) . 'px;">';
+                $html .= '<div class="aqm-list-item" style="margin-bottom: ' . esc_attr($post_bottom_margin) . 'px;">';
                 $html .= '<a href="' . get_permalink() . '" class="aqm-list-title" style="' . $list_title_style . '">' . get_the_title() . '</a>';
                 $html .= '</div>';
             } else if ($layout_type === 'featured_list') {
@@ -481,7 +481,7 @@ function aqm_load_more_posts_handler() {
                 $thumbnail_url = get_the_post_thumbnail_url(null, 'large');
                 
                 // Start card item container
-                $html .= '<div class="aqm-card-item">';
+                $html .= '<div class="aqm-card-item" style="margin-bottom: ' . esc_attr($post_bottom_margin) . 'px;">';
                 
                 // Featured image section
                 $html .= '<div class="aqm-card-image" style="background-image: url(' . esc_url($thumbnail_url) . '); background-size: contain; background-repeat: no-repeat;"></div>';
