@@ -737,7 +737,7 @@ public function render($attrs, $render_slug, $content = null) {
                     $output .= '<div class="aqm-card-item">';
                     
                     // Featured image section
-                    $output .= '<div class="aqm-card-image" style="background-image: url(' . esc_url($thumbnail_url) . ');"></div>';
+                    $output .= '<div class="aqm-card-image" style="background-image: url(' . esc_url($thumbnail_url) . '); background-size: contain; background-repeat: no-repeat;"></div>';
                     
                     // Content section
                     $output .= '<div class="aqm-card-content">';
@@ -1004,8 +1004,9 @@ public function render($attrs, $render_slug, $content = null) {
             
             .aqm-post-feed.aqm-card-view .aqm-card-image {
                 flex: 0 0 35%;
-                background-size: cover;
+                background-size: contain;
                 background-position: center;
+                background-repeat: no-repeat;
                 min-height: 240px;
             }
             
@@ -1023,6 +1024,8 @@ public function render($attrs, $render_slug, $content = null) {
                     flex: 0 0 200px;
                     width: 100%;
                     min-height: 200px;
+                    background-size: contain;
+                    background-repeat: no-repeat;
                 }
                 
                 .aqm-post-feed.aqm-card-view .aqm-card-content {
