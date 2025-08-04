@@ -23,9 +23,10 @@ class AQM_Blog_Post_Feed_Module extends ET_Builder_Module {
                 'options'         => array(
                     'grid' => esc_html__('Grid View', 'aqm-blog-post-feed'),
                     'list' => esc_html__('List View', 'aqm-blog-post-feed'),
+                    'featured_list' => esc_html__('Featured List View', 'aqm-blog-post-feed'),
                 ),
                 'default'         => 'grid',
-                'description'     => esc_html__('Choose between grid view (with images and content) or list view (titles only).', 'aqm-blog-post-feed'),
+                'description'     => esc_html__('Choose between grid view (with images and content), list view (titles only), or featured list view (image on left, content on right).', 'aqm-blog-post-feed'),
             ),
             'columns' => array(
                 'label'           => esc_html__('Number of Columns (Desktop)', 'aqm-blog-post-feed'),
@@ -696,6 +697,8 @@ public function render($attrs, $render_slug, $content = null) {
         // Container based on layout type
         if ($layout_type === 'list') {
             $output = '<div id="' . $module_id . '" class="aqm-post-feed aqm-list-view" style="display: block;">';
+        } else if ($layout_type === 'featured_list') {
+            $output = '<div id="' . $module_id . '" class="aqm-post-feed aqm-featured-list-view" style="display: block;">';
         } else {
             $output = '<div id="' . $module_id . '" class="aqm-post-feed aqm-grid-view" style="display: grid; grid-template-columns: repeat(' . esc_attr($columns) . ', 1fr); gap: ' . esc_attr($spacing) . 'px;">';
         }
@@ -722,6 +725,55 @@ public function render($attrs, $render_slug, $content = null) {
                     $output .= '<div class="aqm-list-item" style="margin-bottom: ' . esc_attr($list_item_spacing) . 'px;">';
                     $output .= '<a href="' . get_permalink() . '" class="aqm-list-title" style="' . $list_title_style . '">' . get_the_title() . '</a>';
                     $output .= '</div>';
+                } else if ($layout_type === 'featured_list') {
+                    // Featured List view - image on left, content on right
+                    $author = get_the_author();
+                    $date = get_the_date();
+                    $thumbnail_url = get_the_post_thumbnail_url(null, 'large');
+                    $title_font_family_style = !empty($title_font_family) ? 'font-family: ' . esc_attr($title_font_family) . ';' : '';
+                    $content_font_family_style = !empty($content_font_family) ? 'font-family: ' . esc_attr($content_font_family) . ';' : '';
+                    
+                    // Start featured list item container
+                    $output .= '<div class="aqm-featured-list-item">';
+                    
+                    // Featured image section
+                    $output .= '<div class="aqm-featured-list-image" style="background-image: url(' . esc_url($thumbnail_url) . ');"></div>';
+                    
+                    // Content section
+                    $output .= '<div class="aqm-featured-list-content">';
+                    
+                    // Title
+                    $output .= '<h3 class="aqm-post-title" style="color:' . esc_attr($title_color) . '; font-size:' . esc_attr($title_font_size) . 'px; line-height:' . esc_attr($title_line_height) . 'em; margin: 0 0 10px;' . $title_font_family_style . '">' . get_the_title() . '</h3>';
+                    
+                    // Meta (author and date with icons)
+                    if ($show_meta_author === 'on' || $show_meta_date === 'on') {
+                        $output .= '<p class="aqm-post-meta" style="color:' . esc_attr($meta_color) . '; font-size:' . esc_attr($meta_font_size) . 'px; line-height:' . esc_attr($meta_line_height) . 'em;">';
+                        
+                        // Show author if enabled
+                        if ($show_meta_author === 'on') {
+                            $output .= '<i class="fas fa-user"></i> ' . esc_html($author);
+                            // Only add separator if both author and date are shown
+                            if ($show_meta_date === 'on') {
+                                $output .= ' &nbsp;|&nbsp; ';
+                            }
+                        }
+                        
+                        // Show date if enabled
+                        if ($show_meta_date === 'on') {
+                            $output .= '<i class="fas fa-calendar-alt"></i> ' . esc_html($date);
+                        }
+                        
+                        $output .= '</p>';
+                    }
+                    
+                    // Excerpt
+                    $output .= '<div class="aqm-post-excerpt" style="color:' . esc_attr($content_color) . '; font-size:' . esc_attr($content_font_size) . 'px; line-height:' . esc_attr($content_line_height) . 'em;' . $content_font_family_style . '">' . wp_trim_words(has_excerpt() ? get_the_excerpt() : get_the_content(), $excerpt_limit, '...') . '</div>';
+                    
+                    // Read More Button
+                    $output .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="transition: background-color 0.5s ease, color 0.5s ease; color:' . esc_attr($read_more_color) . '; background-color:' . esc_attr($read_more_bg_color) . '; padding:' . esc_attr($read_more_padding) . '; border-radius:' . esc_attr($read_more_border_radius) . 'px; display: inline-block; width: fit-content; margin-top: 15px; font-size:' . esc_attr($read_more_font_size) . 'px; text-decoration: none;' . $uppercase_style . '" onmouseover="this.style.color=\'' . esc_attr($read_more_hover_color) . '\'; this.style.backgroundColor=\'' . esc_attr($read_more_hover_bg_color) . '\';" onmouseout="this.style.color=\'' . esc_attr($read_more_color) . '\'; this.style.backgroundColor=\'' . esc_attr($read_more_bg_color) . '\';">' . esc_html($read_more_text) . '</a>';
+                    
+                    $output .= '</div>'; // Close aqm-featured-list-content
+                    $output .= '</div>'; // Close aqm-featured-list-item
                 } else {
                     // Grid view - existing functionality
                     $author = get_the_author();
@@ -937,6 +989,42 @@ public function render($attrs, $render_slug, $content = null) {
     		}
             .aqm-post-item:hover {
                 background-size: ' . esc_attr($background_zoom) . '% !important;
+            }
+            
+            /* Featured List View Styles */
+            .aqm-featured-list-item {
+                display: flex;
+                margin-bottom: 30px;
+                border-radius: ' . esc_attr($item_border_radius) . 'px;
+                overflow: hidden;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            .aqm-featured-list-image {
+                flex: 0 0 35%;
+                min-height: 200px;
+                background-size: cover;
+                background-position: center;
+                position: relative;
+            }
+            .aqm-featured-list-content {
+                flex: 0 0 65%;
+                padding: 20px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            }
+            @media (max-width: 767px) {
+                .aqm-featured-list-item {
+                    flex-direction: column;
+                }
+                .aqm-featured-list-image {
+                    flex: 0 0 200px;
+                    width: 100%;
+                }
+                .aqm-featured-list-content {
+                    flex: 1;
+                    width: 100%;
+                }
             }
             #' . $module_id . '.aqm-post-feed .aqm-post-item .aqm-post-content .aqm-read-more {
                 color: ' . esc_attr($read_more_color) . ' !important;

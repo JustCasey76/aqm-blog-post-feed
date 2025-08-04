@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 1.0.54
+Version: 1.0.55
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 GitHub Plugin URI: https://github.com/JustCasey76/aqm-blog-post-feed
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Version for cache busting
-define('AQM_BLOG_POST_FEED_VERSION', '1.0.54');
+define('AQM_BLOG_POST_FEED_VERSION', '1.0.55');
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
@@ -474,6 +474,53 @@ function aqm_load_more_posts_handler() {
                 $html .= '<div class="aqm-list-item" style="margin-bottom: ' . esc_attr($list_item_spacing) . 'px;">';
                 $html .= '<a href="' . get_permalink() . '" class="aqm-list-title" style="' . $list_title_style . '">' . get_the_title() . '</a>';
                 $html .= '</div>';
+            } else if ($layout_type === 'featured_list') {
+                // Featured List view - image on left, content on right
+                $author = get_the_author();
+                $date = get_the_date();
+                $thumbnail_url = get_the_post_thumbnail_url(null, 'large');
+                
+                // Start featured list item container
+                $html .= '<div class="aqm-featured-list-item">';
+                
+                // Featured image section
+                $html .= '<div class="aqm-featured-list-image" style="background-image: url(' . esc_url($thumbnail_url) . ');"></div>';
+                
+                // Content section
+                $html .= '<div class="aqm-featured-list-content">';
+                
+                // Title
+                $html .= '<h3 class="aqm-post-title" style="color:' . esc_attr($title_color) . '; font-size:' . esc_attr($title_font_size) . 'px; line-height:' . esc_attr($title_line_height) . 'em; margin: 0 0 10px;">' . get_the_title() . '</h3>';
+                
+                // Meta (author and date with icons)
+                if ($show_meta_author === 'on' || $show_meta_date === 'on') {
+                    $html .= '<p class="aqm-post-meta" style="color:' . esc_attr($meta_color) . '; font-size:' . esc_attr($meta_font_size) . 'px; line-height:' . esc_attr($meta_line_height) . 'em;">';
+                    
+                    // Show author if enabled
+                    if ($show_meta_author === 'on') {
+                        $html .= '<i class="fas fa-user"></i> ' . esc_html($author);
+                        // Only add separator if both author and date are shown
+                        if ($show_meta_date === 'on') {
+                            $html .= ' &nbsp;|&nbsp; ';
+                        }
+                    }
+                    
+                    // Show date if enabled
+                    if ($show_meta_date === 'on') {
+                        $html .= '<i class="fas fa-calendar-alt"></i> ' . esc_html($date);
+                    }
+                    
+                    $html .= '</p>';
+                }
+                
+                // Excerpt
+                $html .= '<div class="aqm-post-excerpt" style="color:' . esc_attr($content_color) . '; font-size:' . esc_attr($content_font_size) . 'px; line-height:' . esc_attr($content_line_height) . 'em;">' . wp_trim_words(has_excerpt() ? get_the_excerpt() : get_the_content(), $excerpt_limit, '...') . '</div>';
+                
+                // Read More Button
+                $html .= '<a class="aqm-read-more" href="' . get_permalink() . '" style="transition: background-color 0.5s ease, color 0.5s ease; color:' . esc_attr($read_more_color) . '; background-color:' . esc_attr($read_more_bg_color) . '; padding:' . esc_attr($read_more_padding) . '; border-radius:' . esc_attr($read_more_border_radius) . 'px; display: inline-block; width: fit-content; margin-top: 15px; font-size:' . esc_attr($read_more_font_size) . 'px; text-decoration: none;' . $uppercase_style . '" onmouseover="this.style.color=\'' . esc_attr($read_more_hover_color) . '\'; this.style.backgroundColor=\'' . esc_attr($read_more_hover_bg_color) . '\';" onmouseout="this.style.color=\'' . esc_attr($read_more_color) . '\'; this.style.backgroundColor=\'' . esc_attr($read_more_bg_color) . '\';">' . esc_html($read_more_text) . '</a>';
+                
+                $html .= '</div>'; // Close aqm-featured-list-content
+                $html .= '</div>'; // Close aqm-featured-list-item
             } else {
                 // Grid view - existing functionality
                 $author = get_the_author();
