@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 1.0.62
+Version: 1.0.63
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 GitHub Plugin URI: https://github.com/JustCasey76/aqm-blog-post-feed
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Version for cache busting
-define('AQM_BLOG_POST_FEED_VERSION', '1.0.62');
+define('AQM_BLOG_POST_FEED_VERSION', '1.0.63');
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
@@ -77,7 +77,16 @@ function aqm_blog_post_feed_deactivate() {
 // Include the GitHub Updater class
 require_once plugin_dir_path(__FILE__) . 'includes/class-aqmbpf-updater.php';
 
-// Initialize the GitHub Updater
+/**
+ * Initialize the GitHub Updater.
+ *
+ * Previously registered on `admin_init`, which meant the updater never
+ * attached during WP-CLI runs (CLI does not fire admin_init), so
+ * `wp plugin update aqm-blog-post-feed` could not discover GitHub-hosted
+ * updates. We now instantiate the updater for admin, WP-CLI, and cron
+ * contexts — the only contexts where WordPress's upgrade/transient
+ * machinery actually runs. Front-end requests pay no cost.
+ */
 function aqm_blog_post_feed_init_github_updater() {
     // Verbose init banner is debug-only to avoid log spam on every admin request.
     aqmbpf_debug_log('=========================================================');
@@ -102,7 +111,13 @@ function aqm_blog_post_feed_init_github_updater() {
         error_log('[AQM BLOG POST FEED] Updater class not found');
     }
 }
-add_action('admin_init', 'aqm_blog_post_feed_init_github_updater');
+// Register the updater in any context that can trigger a plugin update.
+// Front-end requests are intentionally skipped — the upgrader filters never
+// fire there, and registering them would waste a get_plugin_data() call
+// plus a GitHub API cache lookup on every page view.
+if (is_admin() || (defined('WP_CLI') && WP_CLI) || (defined('DOING_CRON') && DOING_CRON)) {
+    aqm_blog_post_feed_init_github_updater();
+}
 
 // Show update success message
 function aqm_blog_post_feed_show_update_success() {

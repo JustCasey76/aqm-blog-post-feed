@@ -1,5 +1,11 @@
 # AQM Blog Post Feed Changelog
 
+## 1.0.63 - April 20, 2026
+- **WP-CLI support for updates**: Updater is now registered whenever WordPress is in an upgrade-capable context (admin, WP-CLI, or cron) instead of only on `admin_init`. `wp plugin update aqm-blog-post-feed` now correctly discovers GitHub-hosted updates. Front-end requests still skip the updater entirely.
+- **Less error_log noise from other plugins' updates**: `pre_install`, `post_install`, and `fix_directory_name` filters previously logged banner output every time *any* plugin was updated on the site (they ran before the "is this our plugin?" check). The identity check now runs first and the banners are also gated behind `AQMBPF_DEBUG`.
+- **GitHub auth fix**: Switched from the deprecated `?access_token=` query-string parameter (removed by GitHub in 2021) to the `Authorization: token` header. Only matters if an access token is configured; behavior for public-repo use is unchanged.
+- Rename-failure path still logs unconditionally as a real error, but the noisy debug breadcrumbs around it are now debug-only.
+
 ## 1.0.62 - April 20, 2026
 - Performance: silenced verbose updater/init log spam that fired on every admin request (admin_init) and admin-ajax Heartbeat tick. Log output was filling `error_log` and adding unnecessary disk I/O on every admin page load.
 - Added `AQMBPF_DEBUG` constant (default `false`). Define `AQMBPF_DEBUG` as `true` in `wp-config.php` to re-enable the full lifecycle logs when troubleshooting updates.

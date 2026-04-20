@@ -159,19 +159,22 @@ class AQMBPF_Updater {
 
         // Build API URL - using tags instead of releases
         $api_url = "https://api.github.com/repos/{$this->username}/{$this->repository}/tags";
-        
-        // Add access token if provided
+
+        // GitHub deprecated the ?access_token=<token> query parameter in 2020
+        // (and removed it entirely in 2021). Send the token via the
+        // Authorization header instead.
+        $headers = array(
+            'Accept'     => 'application/vnd.github+json',
+            'User-Agent' => 'WordPress/' . get_bloginfo('version') . '; ' . get_bloginfo('url'),
+        );
         if (!empty($this->access_token)) {
-            $api_url = add_query_arg(array('access_token' => $this->access_token), $api_url);
+            $headers['Authorization'] = 'token ' . $this->access_token;
         }
 
         // Get data from GitHub API
         $response = wp_remote_get($api_url, array(
-            'headers' => array(
-                'Accept' => 'application/json',
-                'User-Agent' => 'WordPress/' . get_bloginfo('version') . '; ' . get_bloginfo('url')
-            ),
-            'timeout' => 30
+            'headers' => $headers,
+            'timeout' => 30,
         ));
 
         // Check for errors
@@ -268,24 +271,25 @@ class AQMBPF_Updater {
      * @return bool Whether to proceed with installation
      */
     public function pre_install($return, $hook_extra) {
-        error_log('=========================================================');
-        error_log('[AQMBPF UPDATER] ENTERING pre_install hook');
-        error_log('=========================================================');
-
-        // Check if this is our plugin
+        // Fast-path: this filter fires for EVERY plugin install/update on the
+        // site. Bail before any logging or work if it isn't our plugin.
         if (!isset($hook_extra['plugin']) || $hook_extra['plugin'] !== $this->plugin_basename) {
             return $return;
         }
-        
+
+        aqmbpf_debug_log('=========================================================');
+        aqmbpf_debug_log('[AQMBPF UPDATER] ENTERING pre_install hook');
+        aqmbpf_debug_log('=========================================================');
+
         // Check if the plugin is active
         if (is_plugin_active($this->plugin_basename)) {
             // Set a transient to reactivate the plugin after update
             set_transient('aqmbpf_was_active', true, 5 * MINUTE_IN_SECONDS);
             // Also set the option for the main plugin reactivation function
             update_option('aqm_blog_post_feed_was_active', true);
-            error_log('[AQMBPF UPDATER] Plugin was active, setting transient and option');
+            aqmbpf_debug_log('[AQMBPF UPDATER] Plugin was active, setting transient and option');
         }
-        
+
         return $return;
     }
 
@@ -296,51 +300,51 @@ class AQMBPF_Updater {
      * @param array $options Array of bulk item update data
      */
     public function post_install($upgrader_object, $options) {
-        error_log('=========================================================');
-        error_log('[AQMBPF UPDATER] ENTERING post_install hook');
-        error_log('=========================================================');
+        // Fast-path: this action fires after any upgrader run (plugin, theme,
+        // core, translations). Bail before any logging unless it's our plugin.
+        if (!isset($options['action']) || $options['action'] !== 'update' ||
+            !isset($options['type']) || $options['type'] !== 'plugin') {
+            return;
+        }
+        if (!isset($options['plugins']) || !in_array($this->plugin_basename, $options['plugins'], true)) {
+            return;
+        }
 
-        // Check if this is a plugin update
-        if ($options['action'] !== 'update' || $options['type'] !== 'plugin') {
-            return;
-        }
-        
-        // Check if our plugin was updated
-        if (!isset($options['plugins']) || !in_array($this->plugin_basename, $options['plugins'])) {
-            return;
-        }
-        
+        aqmbpf_debug_log('=========================================================');
+        aqmbpf_debug_log('[AQMBPF UPDATER] ENTERING post_install hook');
+        aqmbpf_debug_log('=========================================================');
+
         // Set a transient to reactivate on next admin page load
         // This is a fallback in case the plugin can't be activated immediately
         set_transient('aqmbpf_reactivate', true, 5 * MINUTE_IN_SECONDS);
-        
-        error_log('[AQMBPF UPDATER] Update complete, setting reactivation transient');
-        
+
+        aqmbpf_debug_log('[AQMBPF UPDATER] Update complete, setting reactivation transient');
+
         // Try to reactivate the plugin now
         if (get_transient('aqmbpf_was_active')) {
             // Delete the transient
             delete_transient('aqmbpf_was_active');
-            
+
             // Make sure plugin functions are loaded
             if (!function_exists('activate_plugin')) {
                 require_once(ABSPATH . 'wp-admin/includes/plugin.php');
             }
-            
+
             // Reactivate the plugin
             $result = activate_plugin($this->plugin_basename);
-            
+
             if (is_wp_error($result)) {
                 error_log('[AQMBPF UPDATER] Reactivation failed: ' . $result->get_error_message());
             } else {
-                error_log('[AQMBPF UPDATER] Plugin successfully reactivated');
-                
+                aqmbpf_debug_log('[AQMBPF UPDATER] Plugin successfully reactivated');
+
                 // Clear the reactivation transient since we successfully reactivated
                 delete_transient('aqmbpf_reactivate');
-                
+
                 // Set a transient to show a notice
                 set_transient('aqmbpf_reactivated', true, 30);
             }
-            
+
             // Clear plugin cache
             wp_clean_plugins_cache(true);
         }
@@ -356,58 +360,60 @@ class AQMBPF_Updater {
      * @return string Modified source directory
      */
     public function fix_directory_name($source, $remote_source, $upgrader, $hook_extra) {
-        error_log('=========================================================');
-        error_log('[AQMBPF UPDATER] DIRECTORY RENAMING HOOK FIRED');
-        error_log('Source: ' . $source);
-        error_log('Remote Source: ' . $remote_source);
-        error_log('=========================================================');
-
-        // Check if this is our plugin
+        // Fast-path: fires for every upgrader source selection (any plugin or
+        // theme install/update). Skip logging and work unless it's our plugin.
         if (!isset($hook_extra['plugin']) || $hook_extra['plugin'] !== $this->plugin_basename) {
             return $source;
         }
 
+        aqmbpf_debug_log('=========================================================');
+        aqmbpf_debug_log('[AQMBPF UPDATER] DIRECTORY RENAMING HOOK FIRED');
+        aqmbpf_debug_log('Source: ' . $source);
+        aqmbpf_debug_log('Remote Source: ' . $remote_source);
+        aqmbpf_debug_log('=========================================================');
+
         // Get the expected directory name
         $expected_directory = dirname($this->plugin_basename);
-        
+
         // Get the current directory name
         $current_directory = basename($source);
-        
-        error_log('[AQMBPF UPDATER] Expected directory: ' . $expected_directory);
-        error_log('[AQMBPF UPDATER] Current directory: ' . $current_directory);
-        
+
+        aqmbpf_debug_log('[AQMBPF UPDATER] Expected directory: ' . $expected_directory);
+        aqmbpf_debug_log('[AQMBPF UPDATER] Current directory: ' . $current_directory);
+
         // If the directory names don't match, rename it
         if ($current_directory !== $expected_directory) {
             // Build the new path
             $new_source = trailingslashit(dirname($source)) . trailingslashit($expected_directory);
-            
-            error_log('[AQMBPF UPDATER] Attempting to rename ' . $source . ' to ' . $new_source);
-            
+
+            aqmbpf_debug_log('[AQMBPF UPDATER] Attempting to rename ' . $source . ' to ' . $new_source);
+
             // If the destination directory already exists, remove it
             if (is_dir($new_source)) {
-                error_log('[AQMBPF UPDATER] Destination directory already exists, removing it');
+                aqmbpf_debug_log('[AQMBPF UPDATER] Destination directory already exists, removing it');
                 $wp_filesystem = $this->get_filesystem();
                 $wp_filesystem->delete($new_source, true);
             }
-            
+
             // Rename the directory
             if (rename($source, $new_source)) {
-                error_log('[AQMBPF UPDATER] Directory renamed successfully');
+                aqmbpf_debug_log('[AQMBPF UPDATER] Directory renamed successfully');
                 return $new_source;
             } else {
-                error_log('[AQMBPF UPDATER] Directory rename failed');
-                
+                // Rename failures are a real error — log unconditionally.
+                error_log('[AQMBPF UPDATER] Directory rename failed, attempting filesystem API fallback');
+
                 // Try an alternative method using the filesystem API
                 $wp_filesystem = $this->get_filesystem();
                 if ($wp_filesystem->move($source, $new_source, true)) {
-                    error_log('[AQMBPF UPDATER] Directory renamed successfully using filesystem API');
+                    aqmbpf_debug_log('[AQMBPF UPDATER] Directory renamed successfully using filesystem API');
                     return $new_source;
                 } else {
                     error_log('[AQMBPF UPDATER] Directory rename failed using filesystem API');
                 }
             }
         }
-        
+
         return $source;
     }
 
