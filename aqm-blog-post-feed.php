@@ -3,7 +3,7 @@
 Plugin Name: AQM Blog Post Feed
 Plugin URI: https://aqmarketing.com/
 Description: A custom Divi module to display blog posts in a customizable grid with Font Awesome icons, hover effects, and more.
-Version: 1.0.61
+Version: 1.0.62
 Author: AQ Marketing
 Author URI: https://aqmarketing.com/
 GitHub Plugin URI: https://github.com/JustCasey76/aqm-blog-post-feed
@@ -18,10 +18,33 @@ if (!defined('ABSPATH')) {
 }
 
 // Version for cache busting
-define('AQM_BLOG_POST_FEED_VERSION', '1.0.61');
+define('AQM_BLOG_POST_FEED_VERSION', '1.0.62');
 define('AQM_BLOG_POST_FEED_FILE', __FILE__);
 define('AQM_BLOG_POST_FEED_PATH', plugin_dir_path(__FILE__));
 define('AQM_BLOG_POST_FEED_BASENAME', plugin_basename(__FILE__));
+
+/**
+ * Debug logging flag.
+ *
+ * Set AQMBPF_DEBUG to true in wp-config.php to enable verbose lifecycle logging
+ * (updater init, update checks, reactivation flow). Left off by default to
+ * prevent filling the PHP error log on every admin request. Legitimate error
+ * conditions (exceptions, WP_Error, reactivation failures) always log.
+ */
+if (!defined('AQMBPF_DEBUG')) {
+    define('AQMBPF_DEBUG', false);
+}
+
+/**
+ * Conditional debug logger.
+ *
+ * @param string $message Message to log.
+ */
+function aqmbpf_debug_log($message) {
+    if (defined('AQMBPF_DEBUG') && AQMBPF_DEBUG) {
+        error_log($message);
+    }
+}
 
 // Set up text domain for translations
 function aqm_blog_post_feed_load_textdomain() {
@@ -56,11 +79,11 @@ require_once plugin_dir_path(__FILE__) . 'includes/class-aqmbpf-updater.php';
 
 // Initialize the GitHub Updater
 function aqm_blog_post_feed_init_github_updater() {
-    // Log that we're initializing the updater
-    error_log('=========================================================');
-    error_log('[AQM BLOG POST FEED v' . AQM_BLOG_POST_FEED_VERSION . '] USING CUSTOM UPDATER CLASS');
-    error_log('=========================================================');
-    
+    // Verbose init banner is debug-only to avoid log spam on every admin request.
+    aqmbpf_debug_log('=========================================================');
+    aqmbpf_debug_log('[AQM BLOG POST FEED v' . AQM_BLOG_POST_FEED_VERSION . '] USING CUSTOM UPDATER CLASS');
+    aqmbpf_debug_log('=========================================================');
+
     if (class_exists('AQMBPF_Updater')) {
         try {
             new AQMBPF_Updater(

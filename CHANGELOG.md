@@ -1,5 +1,11 @@
 # AQM Blog Post Feed Changelog
 
+## 1.0.62 - April 20, 2026
+- Performance: silenced verbose updater/init log spam that fired on every admin request (admin_init) and admin-ajax Heartbeat tick. Log output was filling `error_log` and adding unnecessary disk I/O on every admin page load.
+- Added `AQMBPF_DEBUG` constant (default `false`). Define `AQMBPF_DEBUG` as `true` in `wp-config.php` to re-enable the full lifecycle logs when troubleshooting updates.
+- `maybe_reactivate_plugin()` now short-circuits when no reactivation transient is set, instead of running (and logging) on every admin_init.
+- Genuine error paths (exceptions, WP_Error, reactivation failures, GitHub API errors) still log unconditionally.
+
 ## 1.0.61 - September 23, 2025
 - Added option to use first paragraph as excerpt when no manual excerpt is set
 - Added support for limiting excerpts by characters instead of words

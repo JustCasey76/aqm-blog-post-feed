@@ -89,11 +89,11 @@ class AQMBPF_Updater {
         add_filter('upgrader_source_selection', array($this, 'fix_directory_name'), 10, 4);
         add_action('admin_init', array($this, 'maybe_reactivate_plugin'));
 
-        // Log initialization
-        error_log('=========================================================');
-        error_log('[AQMBPF UPDATER] Initialized for ' . $this->repository);
-        error_log('[AQMBPF UPDATER] Plugin version: ' . $this->plugin_data['Version']);
-        error_log('=========================================================');
+        // Verbose init banner is debug-only to avoid log spam on every admin request.
+        aqmbpf_debug_log('=========================================================');
+        aqmbpf_debug_log('[AQMBPF UPDATER] Initialized for ' . $this->repository);
+        aqmbpf_debug_log('[AQMBPF UPDATER] Plugin version: ' . $this->plugin_data['Version']);
+        aqmbpf_debug_log('=========================================================');
     }
 
     /**
@@ -110,13 +110,13 @@ class AQMBPF_Updater {
         // Get update data from GitHub
         $update_data = $this->get_github_update_data();
 
-        // Add debug logging
-        error_log('[AQMBPF UPDATER] Checking for updates. Current version: ' . $this->plugin_data['Version']);
-        error_log('[AQMBPF UPDATER] Latest tag from GitHub: ' . ($update_data ? $update_data->tag_name : 'No data'));
-        
+        // Debug-only: this fires frequently via pre_set_site_transient_update_plugins.
+        aqmbpf_debug_log('[AQMBPF UPDATER] Checking for updates. Current version: ' . $this->plugin_data['Version']);
+        aqmbpf_debug_log('[AQMBPF UPDATER] Latest tag from GitHub: ' . ($update_data ? $update_data->tag_name : 'No data'));
+
         // Clean the tag name by removing the 'v' prefix if it exists
         $latest_version = $update_data ? ltrim($update_data->tag_name, 'v') : '';
-        error_log('[AQMBPF UPDATER] Cleaned tag name for comparison: ' . $latest_version);
+        aqmbpf_debug_log('[AQMBPF UPDATER] Cleaned tag name for comparison: ' . $latest_version);
         
         // If update data is available and version is newer, add to transient
         if ($update_data && version_compare($this->plugin_data['Version'], $latest_version, '<')) {
@@ -205,8 +205,8 @@ class AQMBPF_Updater {
         $data->html_url = "https://github.com/{$this->username}/{$this->repository}/releases/tag/{$latest_tag->name}";
         $data->zipball_url = "https://github.com/{$this->username}/{$this->repository}/archive/refs/tags/{$latest_tag->name}.zip";
         
-        // Log the latest tag found
-        error_log('[AQMBPF UPDATER] Latest tag found: ' . $latest_tag->name);
+        // Debug-only: only matters when investigating update-check behavior.
+        aqmbpf_debug_log('[AQMBPF UPDATER] Latest tag found: ' . $latest_tag->name);
         
         // Cache for 6 hours
         set_transient($cache_key, $data, 6 * HOUR_IN_SECONDS);
@@ -415,9 +415,15 @@ class AQMBPF_Updater {
      * Check if we need to reactivate the plugin on admin page load
      */
     public function maybe_reactivate_plugin() {
-        error_log('=========================================================');
-        error_log('[AQMBPF UPDATER] ENTERING maybe_reactivate_plugin function');
-        error_log('=========================================================');
+        // Fast path: this fires on every admin_init. Skip all work (and logging)
+        // unless the reactivation transient is actually set.
+        if (!get_transient('aqmbpf_reactivate')) {
+            return;
+        }
+
+        aqmbpf_debug_log('=========================================================');
+        aqmbpf_debug_log('[AQMBPF UPDATER] ENTERING maybe_reactivate_plugin function');
+        aqmbpf_debug_log('=========================================================');
 
         // Check if the reactivation transient exists
         if (get_transient('aqmbpf_reactivate')) {
